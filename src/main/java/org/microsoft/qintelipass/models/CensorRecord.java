@@ -2,6 +2,7 @@ package org.microsoft.qintelipass.models;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -38,6 +39,20 @@ public class CensorRecord {
     @Column(name = "hit_keywords", nullable = false, updatable = false, length = 1000)
     private String hitKeywords;
 
+    @Column(name = "input_excerpt", updatable = false, length = 2000)
+    private String inputExcerpt;
+
+    @Column(name = "output_excerpt", updatable = false, length = 2000)
+    private String outputExcerpt;
+
+    @Setter
+    @Column(name = "admin_notified", nullable = false)
+    private boolean adminNotified = false;
+
+    @Setter
+    @Column(name = "alert_counted", nullable = false)
+    private boolean alertCounted = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -49,13 +64,17 @@ public class CensorRecord {
                         String phone,
                         String department,
                         String modelName,
-                        String hitKeywords) {
+                        String hitKeywords,
+                        String inputExcerpt,
+                        String outputExcerpt) {
         this.userId = userId;
         this.username = username;
         this.phone = phone;
         this.department = department;
         this.modelName = modelName;
         this.hitKeywords = hitKeywords;
+        this.inputExcerpt = inputExcerpt;
+        this.outputExcerpt = outputExcerpt;
     }
     
     @PrePersist

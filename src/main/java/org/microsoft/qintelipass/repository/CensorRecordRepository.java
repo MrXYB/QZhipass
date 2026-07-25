@@ -12,6 +12,14 @@ public interface CensorRecordRepository extends JpaRepository<CensorRecord, Long
                                           LocalDateTime startTime,
                                           LocalDateTime endTime);
 
+    long countByUserIdAndAlertCountedTrueAndCreatedAtBetween(Long userId,
+                                                             LocalDateTime startTime,
+                                                             LocalDateTime endTime);
+
+    boolean existsByUserIdAndAlertCountedTrueAndCreatedAtBetween(Long userId,
+                                                                 LocalDateTime startTime,
+                                                                 LocalDateTime endTime);
+
     Page<CensorRecord> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     Page<CensorRecord> findAllByOrderByCreatedAtDesc(Pageable pageable);

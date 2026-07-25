@@ -12,6 +12,9 @@ public record CensorRecordDTO(
         String department,
         String modelName,
         String hitKeywords,
+        String inputExcerpt,
+        String outputExcerpt,
+        boolean adminNotified,
         LocalDateTime createdAt
 ) {
     public static CensorRecordDTO from(CensorRecord record) {
@@ -23,6 +26,9 @@ public record CensorRecordDTO(
                 record.getDepartment(),
                 record.getModelName(),
                 record.getHitKeywords(),
+                record.getInputExcerpt(),
+                record.getOutputExcerpt(),
+                record.isAdminNotified(),
                 record.getCreatedAt()
         );
     }
