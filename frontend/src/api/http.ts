@@ -3,7 +3,7 @@ import { clearLoginInfo } from './session'
 
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 10000,
+  timeout: 120000,
   withCredentials: true
 })
 
@@ -41,10 +41,9 @@ http.interceptors.response.use(
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       clearLoginInfo()
 
-      // DEV: 临时禁用登录跳转
-      // if (window.location.pathname !== '/login') {
-      //   window.location.assign('/login')
-      // }
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login')
+      }
     }
 
     return Promise.reject(error)
