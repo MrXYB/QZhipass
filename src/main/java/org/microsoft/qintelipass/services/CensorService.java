@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,13 +23,16 @@ public class CensorService {
     private final CensorKeywordRepository censorKeywordRepository;
     private final CensorRecordRepository censorRecordRepository;
     private final VectorCensorService vectorCensorService;
+    private final CensorAlertService censorAlertService;
 
     public CensorService(CensorKeywordRepository censorKeywordRepository,
                         CensorRecordRepository censorRecordRepository,
-                        VectorCensorService vectorCensorService) {
+                        VectorCensorService vectorCensorService,
+                        CensorAlertService censorAlertService) {
         this.censorKeywordRepository = censorKeywordRepository;
         this.censorRecordRepository = censorRecordRepository;
         this.vectorCensorService = vectorCensorService;
+        this.censorAlertService = censorAlertService;
     }
 
     @Transactional(readOnly = true)
@@ -91,46 +93,54 @@ public class CensorService {
             return;
         }
 
+        boolean alertCounted = shouldCountForAlert(userId);
         CensorRecord record = new CensorRecord(
                 userId,
                 username,
                 phone,
                 department,
                 modelName,
-                String.join(",", allHits)
+                String.join(",", allHits),
+                excerpt(inputContent),
+                excerpt(outputContent)
         );
+        record.setAlertCounted(alertCounted);
 
-        censorRecordRepository.save(record);
-
-        checkMonthlyHitCountAndNotifyAdmin(userId, record);
-    }
-
-    private void checkMonthlyHitCountAndNotifyAdmin(Long userId, CensorRecord record) {
-        YearMonth currentMonth = YearMonth.now();
-
-        LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
-        LocalDateTime startOfNextMonth = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
-
-        long monthlyHitCount = censorRecordRepository.countByUserIdAndCreatedAtBetween(
-                userId,
-                startOfMonth,
-                startOfNextMonth
-        );
-
-        if (monthlyHitCount == 3) {
-            sendSecurityLogToAdmin(record);
+        CensorRecord savedRecord = censorRecordRepository.save(record);
+        incrementKeywordTriggerCounts(allHits);
+        if (alertCounted) {
+            boolean alertSent = censorAlertService.evaluateAfterRecord(savedRecord);
+            savedRecord.setAdminNotified(alertSent);
         }
     }
 
-    private void sendSecurityLogToAdmin(CensorRecord record) {
-        System.out.println("Sensitive word warning: user hit sensitive words 3 times this month.");
-        System.out.println("Username: " + record.getUsername());
-        System.out.println("Phone: " + record.getPhone());
-        System.out.println("Department: " + record.getDepartment());
-        System.out.println("Model: " + record.getModelName());
-        System.out.println("Hit keywords: " + record.getHitKeywords());
+    private void incrementKeywordTriggerCounts(Set<String> hitKeywords) {
+        for (String hitKeyword : hitKeywords) {
+            censorKeywordRepository.findByKeyword(hitKeyword).ifPresent(keyword -> {
+                keyword.setTriggerCount(keyword.getTriggerCount() + 1);
+                censorKeywordRepository.save(keyword);
+            });
+        }
     }
 
+    private boolean shouldCountForAlert(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime minuteStart = now.withSecond(0).withNano(0);
+        LocalDateTime nextMinute = minuteStart.plusMinutes(1);
+        return !censorRecordRepository.existsByUserIdAndAlertCountedTrueAndCreatedAtBetween(
+                userId,
+                minuteStart,
+                nextMinute
+        );
+    }
+
+    private String excerpt(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String normalized = content.trim();
+        return normalized.length() <= 1000 ? normalized : normalized.substring(0, 1000);
+    }
 
     @Transactional(readOnly = true)
     public Page<CensorRecordDTO> listAllRecords(int page, int size) {

@@ -10,8 +10,12 @@ public class CensorKeywordDTO {
     private String keyword;
     private String category;
     private String riskLevel;
-    private boolean enabled;
+    private Boolean enabled;
     private long triggerCount;
     private String createdAt;
     private String updatedAt;
+
+    public boolean isEnabled() {
+        return enabled == null || enabled;
+    }
 }
