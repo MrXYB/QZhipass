@@ -1,8 +1,7 @@
 package org.microsoft.qintelipass.repository;
 
-
-import org.microsoft.qintelipass.models.ConversationMessage;
-import org.microsoft.qintelipass.models.ConversationMessageRole;
+import org.microsoft.qintelipass.entity.ConversationMessage;
+import org.microsoft.qintelipass.entity.ConversationMessageRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -22,6 +21,17 @@ public interface ConversationMessageRepository extends JpaRepository<Conversatio
     // 自动标题优先取第一条 USER 消息作为标题来源。
     Optional<ConversationMessage> findFirstByConversation_IdAndRoleOrderByCreatedAtAsc(
             Long conversationId,
+            ConversationMessageRole role
+    );
+
+    List<ConversationMessage> findByConversation_IdAndStatusOrderByCreatedAtAscIdAsc(
+            Long conversationId,
+            org.microsoft.qintelipass.entity.ConversationMessageStatus status
+    );
+
+    Optional<ConversationMessage> findFirstByConversation_IdAndRequestIdAndRole(
+            Long conversationId,
+            String requestId,
             ConversationMessageRole role
     );
 }

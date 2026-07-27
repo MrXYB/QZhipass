@@ -81,16 +81,13 @@ public class AuthController {
                         .maxAge(Duration.ofDays(7))
                         .build();
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, auth.toString());
-                ConversationResponse conversation = conversationService.createInitialConversation(user.getId());
                 String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "data", UserDTO.fromUser(user),
                         "token", token,
-                        "role", role,
-                        "conversation", conversation,
-                        "initialConversationId", conversation.id()
+                        "role", role
                 ));
             }
             return ResponseEntity.badRequest().body(response);
@@ -172,7 +169,7 @@ public class AuthController {
 }
 @Slf4j
 @RequestMapping("api/v2/portal")
-// Portal login entry. Successful login issues accessToken and creates an initial conversation.
+// Portal login entry. Conversations are created lazily when the user sends the first message.
 class AuthControllerV2 {
     private final LoginStrategyFactory factory;
     private final AuthTokenService authTokenService;
@@ -205,9 +202,8 @@ class AuthControllerV2 {
         if (response.isSuccess()) {
             Long userId = extractUserId(response, params);
             String accessToken = authTokenService.issueToken(userId);
-            ConversationResponse conversation = conversationService.createInitialConversation(userId);
             String role = resolveUserRole(userId);
-            response.setPayload(buildLoginData(userId, accessToken, conversation, role));
+            response.setPayload(buildLoginData(userId, accessToken, role));
 
             ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
                     .httpOnly(true)
@@ -270,15 +266,12 @@ class AuthControllerV2 {
     private Map<String, Object> buildLoginData(
             Long userId,
             String accessToken,
-            ConversationResponse conversation,
             String role
     ) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("user_id", userId);
         data.put("access_token", accessToken);
         data.put("role", role);
-        data.put("initialConversationId", conversation.id());
-        data.put("conversation", conversation);
         return data;
     }
 
