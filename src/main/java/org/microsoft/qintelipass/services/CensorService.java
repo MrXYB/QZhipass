@@ -5,6 +5,7 @@ import org.microsoft.qintelipass.models.CensorKeyword;
 import org.microsoft.qintelipass.models.CensorRecord;
 import org.microsoft.qintelipass.repository.CensorKeywordRepository;
 import org.microsoft.qintelipass.repository.CensorRecordRepository;
+import org.microsoft.qintelipass.util.Snowflake;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -104,6 +105,7 @@ public class CensorService {
                 excerpt(inputContent),
                 excerpt(outputContent)
         );
+        record.setId(Snowflake.nextId());
         record.setAlertCounted(alertCounted);
 
         CensorRecord savedRecord = censorRecordRepository.save(record);

@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.entity;
+package org.microsoft.qintelipass.enums;
 
 public enum ConversationMessageStatus {
     PENDING,

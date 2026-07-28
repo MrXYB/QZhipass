@@ -3,10 +3,14 @@ package org.microsoft.qintelipass.services;
 import jakarta.persistence.criteria.Predicate;
 import org.microsoft.qintelipass.dtos.CensorAlertDTO;
 import org.microsoft.qintelipass.dtos.CensorAlertRuleDTO;
-import org.microsoft.qintelipass.models.*;
+import org.microsoft.qintelipass.enums.CensorAlertStatus;
+import org.microsoft.qintelipass.models.CensorAlert;
+import org.microsoft.qintelipass.models.CensorAlertRule;
+import org.microsoft.qintelipass.models.CensorRecord;
 import org.microsoft.qintelipass.repository.CensorAlertRepository;
 import org.microsoft.qintelipass.repository.CensorAlertRuleRepository;
 import org.microsoft.qintelipass.repository.CensorRecordRepository;
+import org.microsoft.qintelipass.util.Snowflake;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -14,15 +18,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 @Service
 public class CensorAlertService {
@@ -174,6 +173,7 @@ public class CensorAlertService {
         }
 
         CensorAlert alert = new CensorAlert();
+        alert.setId(Snowflake.nextId());
         alert.setUserId(record.getUserId());
         alert.setEmployeeId(String.valueOf(record.getUserId()));
         alert.setName(record.getUsername());
@@ -209,6 +209,7 @@ public class CensorAlertService {
             return;
         }
         CensorAlertRule rule = new CensorAlertRule();
+        rule.setId(Snowflake.nextId());
         rule.setName(DEFAULT_RULE_NAME);
         rule.setPeriodDays(1);
         rule.setThreshold(3);

@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 )
 public class CensorRecord {
     @Id
+    @Setter
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

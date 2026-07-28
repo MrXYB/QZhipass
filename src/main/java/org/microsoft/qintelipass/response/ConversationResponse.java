@@ -27,7 +27,7 @@ public record ConversationResponse(
                 conversation.getUpdatedAt(),
                 conversation.getLastMessageAt(),
                 conversation.getFirstAnsweredAt(),
-                conversation.getLastSavedAt()
+                conversation.getLastMessageAt()
         );
     }
 }

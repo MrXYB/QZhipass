@@ -3,7 +3,6 @@ package org.microsoft.qintelipass.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.microsoft.qintelipass.util.Snowflake;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -23,9 +22,12 @@ import java.time.LocalDateTime;
 public class Conversation {
     public static final String DEFAULT_TITLE = "\u65b0\u5efa\u5bf9\u8bdd";
     public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_FAILED = "FAILED";
 
     @Id
-    private Long id = Snowflake.nextId();
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
@@ -42,6 +44,19 @@ public class Conversation {
     @Column(name = "title_customized", nullable = false)
     private boolean titleCustomized;
 
+    @Column(name = "title_generated", nullable = false)
+    private boolean titleGenerated;
+
+    @Column(name = "first_answered_at")
+    private LocalDateTime firstAnsweredAt;
+
+    @Column(name = "last_saved_at")
+    private LocalDateTime lastSavedAt;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -54,10 +69,10 @@ public class Conversation {
     @PrePersist
     void prePersist() {
         LocalDateTime now = LocalDateTime.now();
-        id = Snowflake.nextId();
         createdAt = now;
         updatedAt = now;
         lastMessageAt = now;
+        lastSavedAt = now;
         if (!StringUtils.hasText(title)) {
             title = DEFAULT_TITLE;
         }

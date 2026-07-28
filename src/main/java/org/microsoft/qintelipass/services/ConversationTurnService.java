@@ -2,13 +2,13 @@ package org.microsoft.qintelipass.services;
 
 import org.microsoft.qintelipass.ai.AiChatClient;
 import org.microsoft.qintelipass.ai.AiChatResult;
-import org.microsoft.qintelipass.entity.Conversation;
-import org.microsoft.qintelipass.entity.ConversationMessage;
-import org.microsoft.qintelipass.entity.ConversationMessageRole;
-import org.microsoft.qintelipass.entity.ConversationMessageStatus;
+import org.microsoft.qintelipass.enums.ConversationMessageRole;
+import org.microsoft.qintelipass.enums.ConversationMessageStatus;
 import org.microsoft.qintelipass.exceptions.BadRequestException;
 import org.microsoft.qintelipass.exceptions.ForbiddenException;
 import org.microsoft.qintelipass.exceptions.NotFoundException;
+import org.microsoft.qintelipass.models.Conversation;
+import org.microsoft.qintelipass.models.ConversationMessage;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
 import org.microsoft.qintelipass.request.ConversationTurnRequest;

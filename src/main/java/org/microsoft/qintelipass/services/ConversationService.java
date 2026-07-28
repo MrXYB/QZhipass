@@ -1,6 +1,7 @@
 package org.microsoft.qintelipass.services;
 
 import org.microsoft.qintelipass.enums.ConversationMessageRole;
+import org.microsoft.qintelipass.enums.ConversationMessageStatus;
 import org.microsoft.qintelipass.exceptions.BadRequestException;
 import org.microsoft.qintelipass.exceptions.ForbiddenException;
 import org.microsoft.qintelipass.exceptions.NotFoundException;
@@ -13,6 +14,7 @@ import org.microsoft.qintelipass.request.SaveConversationMessageRequest;
 import org.microsoft.qintelipass.request.UpdateConversationModelRequest;
 import org.microsoft.qintelipass.request.UpdateConversationTitleRequest;
 import org.microsoft.qintelipass.response.*;
+import org.microsoft.qintelipass.util.Snowflake;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,12 +58,13 @@ public class ConversationService {
         String modelKey = aiModelService.normalizeOptionalModelKey(request == null ? null : request.getModelKey());
 
         Conversation conversation = new Conversation();
+        conversation.setId(Snowflake.nextId());
         conversation.setUserId(userId);
         conversation.setTitle(Conversation.DEFAULT_TITLE);
         conversation.setModelKey(modelKey);
         conversation.setStatus(Conversation.STATUS_ACTIVE);
 
-        return ConversationResponse.from(conversationRepository.save(conversation));
+        return ConversationResponse.from(((Conversation) conversationRepository.save(conversation)).);
     }
 
     @Transactional
@@ -87,7 +90,7 @@ public class ConversationService {
                 .stream()
                 .map(conversation -> ConversationSummaryResponse.from(
                         conversation,
-                        messageRepository.countByConversation_Id(conversation.getId())
+                        messageRepository.countByConversation_Id(((Conversation) conversation).getId())
                 ))
                 .toList();
     }
@@ -120,12 +123,13 @@ public class ConversationService {
         }
 
         ConversationMessage message = new ConversationMessage();
+        message.setId(Snowflake.nextId());
         message.setConversation(conversation);
         message.setRole(role);
         message.setContent(content);
         message.setModelKey(modelKey);
         message.setTokenCount(tokenCounter.count(content));
-        message.setStatus(org.microsoft.qintelipass.entity.ConversationMessageStatus.COMPLETED);
+        message.setStatus(ConversationMessageStatus.COMPLETED);
 
         ConversationMessage savedMessage = messageRepository.save(message);
         LocalDateTime now = LocalDateTime.now();

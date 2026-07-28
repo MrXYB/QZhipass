@@ -79,6 +79,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
         redisTemplate.expireAt(modelTotalKey, ExpirationTimeHelper.getNextDayTime());
 
         TokenUsageLog logEntry = TokenUsageLog.builder()
+                .id(Snowflake.nextId())
                 .userId(userId)
                 .modelId(modelId != null ? modelId : 1L)
                 .id(Snowflake.nextId())
@@ -192,6 +193,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
             dailyConfigRepository.save(config);
         } else {
             DailyConfig config = DailyConfig.builder()
+                    .id(Snowflake.nextId())
                     .userId(userId)
                     .dailyLimit(limit)
                     .build();
