@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.enums;
 
 public enum ConversationMessageRole {
     USER,

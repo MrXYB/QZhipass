@@ -3,6 +3,7 @@ package org.microsoft.qintelipass.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.microsoft.qintelipass.enums.ConversationMessageRole;
 
 import java.time.LocalDateTime;
 
