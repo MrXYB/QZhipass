@@ -64,7 +64,7 @@ public class ConversationService {
         conversation.setModelKey(modelKey);
         conversation.setStatus(Conversation.STATUS_ACTIVE);
 
-        return ConversationResponse.from(((Conversation) conversationRepository.save(conversation)).);
+        return ConversationResponse.from(conversationRepository.save(conversation));
     }
 
     @Transactional
@@ -88,7 +88,7 @@ public class ConversationService {
                         PageRequest.of(safePage, safeLimit)
                 )
                 .stream()
-                .map((Conversation) conversation -> ConversationSummaryResponse.from(
+                .map(conversation -> ConversationSummaryResponse.from(
                         conversation,
                         messageRepository.countByConversation_Id(conversation.getId())
                 ))
