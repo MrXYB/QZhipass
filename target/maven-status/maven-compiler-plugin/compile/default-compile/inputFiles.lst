@@ -36,12 +36,9 @@ E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\dtos\Chat
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\dtos\TokenUsageRankDTO.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\dtos\UserDTO.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\dtos\UserTokenUsageDTO.java
-E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\entity\Conversation.java
-E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\entity\ConversationMemory.java
-E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\entity\ConversationMessage.java
-E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\entity\ConversationMessageStatus.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\enums\CensorAlertStatus.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\enums\ConversationMessageRole.java
+E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\enums\ConversationMessageStatus.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\enums\EnumTranslatableMessage.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\enums\UserRole.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\enums\UserStatus.java
@@ -71,6 +68,7 @@ E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\Ce
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\CensorKeyword.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\CensorRecord.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\Conversation.java
+E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\ConversationMemory.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\ConversationMessage.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\DailyConfig.java
 E:\X19\Development\Qintelipass\src\main\java\org\microsoft\qintelipass\models\Models.java

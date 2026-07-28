@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.services;
 
-import org.microsoft.qintelipass.entity.Conversation;
+import org.microsoft.qintelipass.models.Conversation;
 import org.microsoft.qintelipass.repository.ConversationRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
