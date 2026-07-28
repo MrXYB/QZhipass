@@ -88,9 +88,9 @@ public class ConversationService {
                         PageRequest.of(safePage, safeLimit)
                 )
                 .stream()
-                .map(conversation -> ConversationSummaryResponse.from(
+                .map((Conversation) conversation -> ConversationSummaryResponse.from(
                         conversation,
-                        messageRepository.countByConversation_Id(((Conversation) conversation).getId())
+                        messageRepository.countByConversation_Id(conversation.getId())
                 ))
                 .toList();
     }
