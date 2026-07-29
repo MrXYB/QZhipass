@@ -5,8 +5,8 @@ Content-Type: application/json
 {
   "loginType": "MOBILE_PWD",
   "credential": {
-    "mobile": "5768677777",
-    "password": "string"
+    "mobile": "12341757999",
+    "password": "123abc"
   }
 }
 
@@ -19,7 +19,8 @@ Content-Type: application/json
   "email": "jsdhingy@163.com",
   "name": "Hello",
   "password": "123abc",
-  "phone": "12341757999"
+  "phone": "12341757999",
+  "department": "sndo"
 }
 
 

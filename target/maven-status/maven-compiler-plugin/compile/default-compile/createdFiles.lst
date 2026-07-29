@@ -83,7 +83,6 @@ org\microsoft\qintelipass\configs\DeepSeekApiClient$ChatCompletionResponse.class
 org\microsoft\qintelipass\repository\AiModelConfigRepository.class
 org\microsoft\qintelipass\models\TokenDailySummary$TokenDailySummaryBuilder.class
 org\microsoft\qintelipass\configs\DeepSeekChatModel$1.class
-org\microsoft\qintelipass\controllers\AuthControllerV2.class
 org\microsoft\qintelipass\request\UpdateConversationTitleRequest.class
 org\microsoft\qintelipass\interceptors\UserStatusInterceptor.class
 org\microsoft\qintelipass\models\Models.class

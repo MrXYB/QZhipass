@@ -12,7 +12,6 @@ import org.microsoft.qintelipass.dtos.UserDTO;
 import org.microsoft.qintelipass.models.User;
 import org.microsoft.qintelipass.request.LoginRequest;
 import org.microsoft.qintelipass.request.RegisterRequest;
-import org.microsoft.qintelipass.response.ConversationResponse;
 import org.microsoft.qintelipass.response.ResponseBody;
 import org.microsoft.qintelipass.services.ConversationService;
 import org.microsoft.qintelipass.services.SmsServiceImpl;
@@ -43,7 +42,6 @@ public class AuthController {
     private static final String COOKIE_ROOT = "/";
     @Autowired
     private IRegisterable registerService;
-    private final ConversationService conversationService;
     private final AdminProperties adminProperties;
 
     @Autowired
@@ -53,7 +51,6 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.credentialManager = credentialManager;
-        this.conversationService = conversationService;
         this.adminProperties = adminProperties;
     }
 
@@ -77,19 +74,15 @@ public class AuthController {
                         .maxAge(Duration.ofDays(7))
                         .build();
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, auth.toString());
-                ConversationResponse conversation = conversationService.createInitialConversation(user.getId());
                 String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "access_token", token,
                         "role", role,
-                        "data", Map.of(
-                                "user", UserDTO.fromUser(user),
-                                "conversation", conversation,
-                                "initialConversationId", conversation.id()
+                        "data", UserDTO.fromUser(user)
                         )
-                ));
+                );
             }
             return ResponseEntity.badRequest().body(response);
         } catch (IllegalArgumentException e) {
