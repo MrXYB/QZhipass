@@ -1,5 +1,5 @@
 ###
-POST http://localhost:7510/api/v1/auth/portal/login
+POST http://1.14.203.243/api/v1/auth/portal/login
 Content-Type: application/json
 
 {
@@ -12,7 +12,7 @@ Content-Type: application/json
 
 
 ###
-POST http://localhost:7510/api/v1/auth/portal/register
+POST http://1.14.203.243/api/v1/auth/portal/register
 Content-Type: application/json
 
 {

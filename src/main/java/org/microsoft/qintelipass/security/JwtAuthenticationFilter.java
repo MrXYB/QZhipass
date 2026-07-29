@@ -69,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
 
                     if (user != null) {
-//                        trafficStatService.recordTraffic(user.getId());
+                        trafficStatService.recordTraffic(user.getId());
                         UserRole role = adminProperties.isAdmin(user.getPhone())
                                 ? UserRole.ADMIN
                                 : UserRole.USER;

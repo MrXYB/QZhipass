@@ -14,11 +14,9 @@ import org.microsoft.qintelipass.request.LoginRequest;
 import org.microsoft.qintelipass.request.RegisterRequest;
 import org.microsoft.qintelipass.response.ConversationResponse;
 import org.microsoft.qintelipass.response.ResponseBody;
-import org.microsoft.qintelipass.services.AuthTokenService;
 import org.microsoft.qintelipass.services.ConversationService;
 import org.microsoft.qintelipass.services.SmsServiceImpl;
 import org.microsoft.qintelipass.services.UserDetailsServiceImpl;
-import org.microsoft.qintelipass.services.UserService;
 import org.microsoft.qintelipass.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -26,13 +24,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -81,13 +77,18 @@ public class AuthController {
                         .maxAge(Duration.ofDays(7))
                         .build();
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, auth.toString());
+                ConversationResponse conversation = conversationService.createInitialConversation(user.getId());
                 String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
-                        "data", UserDTO.fromUser(user),
-                        "token", token,
-                        "role", role
+                        "access_token", token,
+                        "role", role,
+                        "data", Map.of(
+                                "user", UserDTO.fromUser(user),
+                                "conversation", conversation,
+                                "initialConversationId", conversation.id()
+                        )
                 ));
             }
             return ResponseEntity.badRequest().body(response);
@@ -165,121 +166,5 @@ public class AuthController {
                     ));
 
         }
-    }
-}
-@Slf4j
-@RequestMapping("api/v2/portal")
-// Portal login entry. Conversations are created lazily when the user sends the first message.
-class AuthControllerV2 {
-    private final LoginStrategyFactory factory;
-    private final AuthTokenService authTokenService;
-    private final ConversationService conversationService;
-    private final AdminProperties adminProperties;
-    private final UserService userService;
-
-    public AuthControllerV2(
-            LoginStrategyFactory factory,
-            AuthTokenService authTokenService,
-            ConversationService conversationService,
-            AdminProperties adminProperties,
-            UserService userService
-    ) {
-        this.factory = factory;
-        this.authTokenService = authTokenService;
-        this.conversationService = conversationService;
-        this.adminProperties = adminProperties;
-        this.userService = userService;
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest formData, HttpServletResponse servletResponse) {
-        String loginType = formData.getLoginType();
-        Map<String, Object> params = formData.effectiveParams();
-        ILoginStrategy strategy = factory.getStrategy(loginType);
-        log.info("Login request received. loginType={}", loginType);
-        ResponseBody response = strategy.authenticate(params);
-        log.info("Authenticator completed. success={}", response.isSuccess());
-        if (response.isSuccess()) {
-            Long userId = extractUserId(response, params);
-            String accessToken = authTokenService.issueToken(userId);
-            String role = resolveUserRole(userId);
-            response.setPayload(buildLoginData(userId, accessToken, role));
-
-            ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
-                    .httpOnly(true)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(Duration.ofHours(8))
-                    .build();
-            servletResponse.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-            return ResponseEntity.ok(response);
-        }
-        return ResponseEntity.badRequest().body(response);
-    }
-
-    // Prefer the numeric id from the MySQL user table. Phone fallback is kept only for local SMS demos.
-    private Long extractUserId(ResponseBody response, Map<String, Object> params) {
-        if (response.getPayload() instanceof Map<?, ?> data) {
-            Long id = readLong(data.get("id"));
-            if (id != null) {
-                return id;
-            }
-            Long userId = readLong(data.get("user_id"));
-            if (userId != null) {
-                return userId;
-            }
-            Long camelUserId = readLong(data.get("userId"));
-            if (camelUserId != null) {
-                return camelUserId;
-            }
-        }
-
-        Long mobile = readLong(params.get("mobile"));
-        if (mobile != null) {
-            return mobile;
-        }
-        Long phoneNumber = readLong(params.get("phone_number"));
-        if (phoneNumber != null) {
-            return phoneNumber;
-        }
-        Long phone = readLong(params.get("phone"));
-        if (phone != null) {
-            return phone;
-        }
-        throw new IllegalArgumentException("Login succeeded but numeric user id could not be resolved.");
-    }
-
-    private Long readLong(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        if (value instanceof String text && StringUtils.hasText(text)) {
-            try {
-                return Long.parseLong(text.trim());
-            } catch (NumberFormatException exception) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private Map<String, Object> buildLoginData(
-            Long userId,
-            String accessToken,
-            String role
-    ) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("user_id", userId);
-        data.put("access_token", accessToken);
-        data.put("role", role);
-        return data;
-    }
-
-    private String resolveUserRole(Long userId) {
-        User user = userService.getUserById(userId);
-        if (user != null && adminProperties.isAdmin(user.getPhone())) {
-            return "ADMIN";
-        }
-        return "USER";
     }
 }

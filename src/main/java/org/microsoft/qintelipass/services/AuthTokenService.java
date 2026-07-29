@@ -19,7 +19,6 @@ import java.util.Optional;
 public class AuthTokenService {
     private static final String TOKEN_KEY_PREFIX = "auth:token:";
     private static final String USER_ID_CLAIM = "userId";
-
     private final RedisService redisService;
     private final SecretKey signingKey;
     private final long expirationMs;
