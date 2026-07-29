@@ -15,6 +15,13 @@ public class ApiExceptionHandler {
                 .body(ApiResponse.error(exception.getMessage()));
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConflictException(ConflictException exception) {
+        return ResponseEntity
+                .status(org.springframework.http.HttpStatus.CONFLICT)
+                .body(ApiResponse.error(exception.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException exception) {
         return ResponseEntity
