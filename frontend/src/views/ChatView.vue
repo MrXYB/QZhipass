@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import {type Component, computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {ElMessage} from 'element-plus'
+import {useRouter} from 'vue-router'
+import BrandLogo from '../components/BrandLogo.vue'
+import http, {getErrorMessage} from '../api/http'
+import {readLoginInfo, saveInitialConversationId} from '../api/session'
+import {useAuthStore} from '../stores/auth'
 import {
   Bell,
   ChatDotSquare,
+  Download,
+  Headset,
+  Histogram,
+  HomeFilled,
   Paperclip,
   Search,
   Setting,
+  Share,
   SwitchButton,
+  Upload,
+  UserFilled,
 } from '@element-plus/icons-vue'
-import BrandLogo from '../components/BrandLogo.vue'
-import { getErrorMessage } from '../api/http'
-import {
-  getConversation,
-  listConversations,
-  sendConversationTurn,
-  type ConversationMessagePayload,
-  type ConversationPayload,
-} from '../api/conversation'
-import { readLoginInfo } from '../api/session'
-import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -28,20 +28,12 @@ const authStore = useAuthStore()
 // ========== state ==========
 const searchQuery = ref('')
 const inputText = ref('')
-const selectedModel = ref('deepseek-v4')
+const selectedModel = ref('gpt4-omni')
 const selectedAgent = ref('data-analyst')
 const selectedChatId = ref<number | null>(null)
 const showModelDropdown = ref(false)
 const showAgentDropdown = ref(false)
-const sendingMessage = ref(false)
-const loadingConversation = ref(false)
-const loadingHistory = ref(false)
-const historyPage = ref(0)
-const historyHasMore = ref(true)
-const pendingTurn = ref<{ conversationId: number | null; prompt: string; requestId: string } | null>(null)
-const historyPageSize = 20
-let conversationLoadVersion = 0
-let temporaryMessageId = 0
+const creatingConversation = ref(false)
 
 const tokenLimit = 100000
 const tokenUsed = 64000
@@ -61,10 +53,27 @@ const agents = [
   { value: 'coder', label: 'Code Assistant Agent' },
 ]
 
+interface ApiResponse<T> {
+  success?: boolean
+  message?: string
+  data?: T
+}
+
+interface ConversationPayload {
+  id: number
+  title?: string
+  modelKey?: string | null
+}
+
 interface ChatItem {
   id: number
   title: string
-  createdAt: string
+  icon: Component
+}
+
+interface CreateConversationOptions {
+  silent?: boolean
+  persistAsInitial?: boolean
 }
 
 const chats = ref<ChatItem[]>([])
@@ -81,136 +90,74 @@ const messages = ref<Message[]>([])
 const chatContainer = ref<HTMLElement>()
 
 const currentChat = computed(() => chats.value.find(c => c.id === selectedChatId.value))
-const charCount = computed(() => Array.from(inputText.value).length)
+const charCount = computed(() => inputText.value.length)
 const maxChars = 2000
-const showReplyLoading = computed(() =>
-  sendingMessage.value && pendingTurn.value?.conversationId === selectedChatId.value
-)
 
-async function selectChat(id: number) {
-  const loadVersion = ++conversationLoadVersion
+function selectChat(id: number) {
   selectedChatId.value = id
-  loadingConversation.value = true
-  messages.value = []
-  try {
-    const detail = await getConversation(id)
-    if (loadVersion !== conversationLoadVersion || selectedChatId.value !== id) return
-    selectedModel.value = detail.conversation.modelKey || selectedModel.value
-    messages.value = detail.messages
-      .filter(message => message.role !== 'SYSTEM')
-      .map(toViewMessage)
-    activateConversationHeader(detail.conversation)
-    await nextTick(scrollToBottom)
-  } catch (error) {
-    if (loadVersion === conversationLoadVersion) {
-      ElMessage.error(getErrorMessage(error, '读取对话失败'))
-    }
-  } finally {
-    if (loadVersion === conversationLoadVersion) {
-      loadingConversation.value = false
-    }
-  }
 }
 
-function toViewMessage(message: ConversationMessagePayload): Message {
-  return {
-    id: message.id,
-    role: message.role === 'USER' ? 'user' : 'ai',
-    content: message.content,
-    timestamp: new Date(message.createdAt).toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-}
-
-function activateConversationHeader(conversation: ConversationPayload, moveToTop = false) {
+function activateConversation(conversation: ConversationPayload) {
   const title = conversation.title || '新建对话'
-  const existingIndex = chats.value.findIndex(chat => chat.id === conversation.id)
-  if (existingIndex < 0) {
+  const existing = chats.value.find(chat => chat.id === conversation.id)
+
+  if (existing) {
+    existing.title = title
+  } else {
     chats.value.unshift({
       id: conversation.id,
       title,
-      createdAt: conversation.createdAt
+      icon: ChatDotSquare
     })
+  }
+
+  selectedChatId.value = conversation.id
+  messages.value = []
+  inputText.value = ''
+}
+
+function initializeConversationFromLogin() {
+  const loginInfo = readLoginInfo()
+  if (!loginInfo?.initialConversationId) {
+    void createNewConversation({ silent: true, persistAsInitial: true })
     return
   }
 
-  const existing = chats.value[existingIndex]
-  existing.title = title
-  existing.createdAt = conversation.createdAt || existing.createdAt
-  if (moveToTop && existingIndex > 0) {
-    chats.value.splice(existingIndex, 1)
-    chats.value.unshift(existing)
-  }
-}
-
-function toChatItem(conversation: ConversationPayload): ChatItem {
-  return {
-    id: conversation.id,
-    title: conversation.title || '新建对话',
-    createdAt: conversation.createdAt
-  }
-}
-
-function formatConversationTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '时间未知'
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
+  activateConversation({
+    id: loginInfo.initialConversationId,
+    title: '新建对话'
   })
 }
 
-async function loadHistoryPage(reset = false) {
-  if (loadingHistory.value || (!reset && !historyHasMore.value)) return
-  loadingHistory.value = true
-  const page = reset ? 0 : historyPage.value
+async function createNewConversation(options: CreateConversationOptions = {}) {
+  if (creatingConversation.value) return
+
+  creatingConversation.value = true
   try {
-    const recent = await listConversations(page, historyPageSize)
-    const incoming = recent.map(toChatItem)
-    if (reset) {
-      chats.value = incoming
-    } else {
-      const knownIds = new Set(chats.value.map(chat => chat.id))
-      chats.value.push(...incoming.filter(chat => !knownIds.has(chat.id)))
+    const { data } = await http.post<ApiResponse<ConversationPayload>>('/v1/conversations', {
+      modelKey: selectedModel.value
+    })
+    const conversation = data.data
+
+    if (!conversation?.id) {
+      throw new Error(data.message || '新建对话失败')
     }
-    historyPage.value = page + 1
-    historyHasMore.value = recent.length === historyPageSize
+
+    activateConversation(conversation)
+    if (options.persistAsInitial) {
+      saveInitialConversationId(conversation.id)
+    }
+    await nextTick(scrollToBottom)
+    if (!options.silent) {
+      ElMessage.success('已创建新对话')
+    }
   } catch (error) {
-    ElMessage.error(getErrorMessage(error, '读取历史对话失败'))
+    if (!options.silent) {
+      ElMessage.error(getErrorMessage(error, '新建对话失败'))
+    }
   } finally {
-    loadingHistory.value = false
+    creatingConversation.value = false
   }
-}
-
-function handleHistoryScroll(event: Event) {
-  const target = event.currentTarget as HTMLElement
-  const distanceToBottom = target.scrollHeight - target.scrollTop - target.clientHeight
-  if (distanceToBottom < 48) void loadHistoryPage()
-}
-
-async function initializeConversationFromLogin() {
-  const loginInfo = readLoginInfo()
-  await loadHistoryPage(true)
-  if (!loginInfo?.initialConversationId) {
-    startNewConversation()
-    return
-  }
-  await selectChat(loginInfo.initialConversationId)
-}
-
-function startNewConversation() {
-  conversationLoadVersion += 1
-  loadingConversation.value = false
-  selectedChatId.value = null
-  messages.value = []
-  inputText.value = ''
-  pendingTurn.value = null
 }
 
 function selectModel(val: string) {
@@ -233,7 +180,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  void initializeConversationFromLogin()
+  initializeConversationFromLogin()
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
@@ -246,58 +193,21 @@ function selectAgent(val: string) {
   showAgentDropdown.value = false
 }
 
-async function sendMessage() {
+function sendMessage() {
   const text = inputText.value.trim()
-  if (!text || sendingMessage.value) return
-  if (Array.from(text).length > maxChars) {
-    ElMessage.warning('单次输入不能超过 2000 个字符')
-    return
-  }
-  const conversationId = selectedChatId.value
-  const retry = pendingTurn.value?.conversationId === conversationId
-    && pendingTurn.value.prompt === text
-  const requestId = retry
-    ? pendingTurn.value!.requestId
-    : (typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
-  pendingTurn.value = { conversationId, prompt: text, requestId }
-  sendingMessage.value = true
-  inputText.value = ''
-  const optimisticMessageId = --temporaryMessageId
+  if (!text) return
   messages.value.push({
-    id: optimisticMessageId,
+    id: Date.now(),
     role: 'user',
     content: text,
-    timestamp: new Date().toLocaleTimeString('zh-CN', {
+    timestamp: new Date().toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
-    })
+      minute: '2-digit',
+      hour12: true,
+    }),
   })
-  await nextTick(scrollToBottom)
-  try {
-    const turn = await sendConversationTurn(conversationId, text, selectedModel.value, requestId)
-    const isStillCurrentConversation = selectedChatId.value === conversationId
-    if (isStillCurrentConversation) {
-      selectedChatId.value = turn.conversation.id
-      const optimisticIndex = messages.value.findIndex(message => message.id === optimisticMessageId)
-      const completedMessages = [toViewMessage(turn.userMessage), toViewMessage(turn.assistantMessage)]
-      if (optimisticIndex >= 0) {
-        messages.value.splice(optimisticIndex, 1, ...completedMessages)
-      } else {
-        messages.value.push(...completedMessages)
-      }
-    }
-    activateConversationHeader(turn.conversation, true)
-    pendingTurn.value = null
-    if (isStillCurrentConversation) await nextTick(scrollToBottom)
-  } catch (error) {
-    messages.value = messages.value.filter(message => message.id !== optimisticMessageId)
-    if (selectedChatId.value === conversationId) inputText.value = text
-    ElMessage.error(getErrorMessage(error, 'AI 回复失败，请稍后重试'))
-  } finally {
-    sendingMessage.value = false
-  }
+  inputText.value = ''
+  nextTick(scrollToBottom)
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -358,30 +268,21 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
       <div class="px-4 pt-4">
         <button
           class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="sendingMessage"
-          @click="startNewConversation"
+          :disabled="creatingConversation"
+          @click="createNewConversation()"
         >
           <el-icon :size="16"><ChatDotSquare /></el-icon>
-          + 开启新会话
+          {{ creatingConversation ? '创建中...' : '+ 开启新会话' }}
         </button>
       </div>
 
       <!-- Chat history -->
-      <div class="mt-5 flex-1 overflow-y-auto px-3" @scroll.passive="handleHistoryScroll">
+      <div class="mt-5 flex-1 overflow-y-auto px-3">
         <p class="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">对话历史</p>
-        <div class="mb-3 px-1">
-          <el-input
-            v-model="searchQuery"
-            placeholder="搜索对话内容..."
-            :prefix-icon="Search"
-            size="small"
-            clearable
-          />
-        </div>
         <ul class="space-y-0.5">
           <li v-for="chat in chats" :key="chat.id">
             <button
-              class="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition"
+              class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition"
               :class="
                 selectedChatId === chat.id
                   ? 'bg-blue-50 text-blue-700 font-medium'
@@ -389,22 +290,8 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
               "
               @click="selectChat(chat.id)"
             >
-              <el-icon :size="16" class="mt-0.5 shrink-0"><ChatDotSquare /></el-icon>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate">{{ chat.title }}</span>
-                <span class="mt-0.5 block truncate text-xs font-normal text-gray-400">
-                  {{ formatConversationTime(chat.createdAt) }}
-                </span>
-              </span>
-            </button>
-          </li>
-          <li v-if="historyHasMore || loadingHistory" class="px-2 py-2">
-            <button
-              class="w-full rounded-md py-1.5 text-xs text-blue-600 transition hover:bg-blue-50 disabled:text-gray-400"
-              :disabled="loadingHistory"
-              @click="loadHistoryPage()"
-            >
-              {{ loadingHistory ? '加载中...' : '加载更多历史' }}
+              <el-icon :size="16"><component :is="chat.icon" /></el-icon>
+              <span class="truncate">{{ chat.title }}</span>
             </button>
           </li>
         </ul>
@@ -443,34 +330,51 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
       <header class="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
         <div class="flex items-center gap-3 min-w-0">
           <h2 class="truncate text-base font-semibold text-gray-800">
-            {{ currentChat?.title ?? '新建对话' }}
+            {{ currentChat?.title ?? '选择对话' }}
           </h2>
           <span
             class="shrink-0 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-600"
           >
-            {{ modelLabel }}
+            GPT-4 Omni
           </span>
         </div>
         <div class="flex items-center gap-2">
+          <div class="relative hidden sm:block">
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索对话内容..."
+              :prefix-icon="Search"
+              size="small"
+              class="w-56"
+            />
+          </div>
           <button
             class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
             title="通知"
           >
             <el-icon :size="18"><Bell /></el-icon>
           </button>
+          <button
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            title="帮助"
+          >
+            <el-icon :size="18"><Headset /></el-icon>
+          </button>
+          <button
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            title="用户设置"
+          >
+            <el-icon :size="18"><UserFilled /></el-icon>
+          </button>
         </div>
       </header>
 
       <!-- Chat area -->
-      <div
-        ref="chatContainer"
-        class="flex-1 overflow-y-auto px-4 py-5 sm:px-8"
-        :class="loadingConversation ? 'bg-white' : 'bg-gray-50'"
-      >
-        <div v-if="!loadingConversation" class="mx-auto max-w-3xl space-y-5">
+      <div ref="chatContainer" class="flex-1 overflow-y-auto bg-gray-50 px-4 py-5 sm:px-8">
+        <div class="mx-auto max-w-3xl space-y-5">
           <div v-for="msg in messages" :key="msg.id">
             <!-- Timestamp separator -->
-            <div v-if="msg.role === 'user'" class="mb-4 text-center">
+            <div class="mb-4 text-center">
               <span class="inline-block rounded-full bg-gray-200 px-3 py-0.5 text-xs text-gray-500">
                 {{ msg.timestamp }}
               </span>
@@ -498,7 +402,13 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
                 <div
                   class="rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-gray-700 shadow-sm leading-relaxed"
                 >
-                  <div class="whitespace-pre-wrap break-words">{{ msg.content }}</div>
+                  <!-- Basic markdown rendering -->
+                  <div v-html="
+                    msg.content
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/### (.*)/g, '<h4 class=\'text-base font-semibold mt-2 mb-1\'>$1</h4>')
+                      .replace(/\n/g, '<br>')
+                  "></div>
                 </div>
                 <!-- Action buttons -->
                 <div v-if="msg.actions && msg.actions.length" class="mt-2 flex flex-wrap gap-2">
@@ -510,24 +420,6 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
                     {{ action }}
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- AI reply loading state -->
-          <div v-if="showReplyLoading" class="flex gap-3" aria-live="polite" aria-label="AI 正在回复">
-            <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-xs font-bold text-white"
-            >
-              AI
-            </div>
-            <div class="min-w-0 max-w-[80%]">
-              <p class="mb-1 text-xs font-medium text-gray-500">Data Analyst Agent</p>
-              <div class="flex items-center gap-1.5 rounded-2xl rounded-tl-sm bg-white px-4 py-3.5 shadow-sm">
-                <span class="h-2 w-2 animate-bounce rounded-full bg-indigo-400"></span>
-                <span class="h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:150ms]"></span>
-                <span class="h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:300ms]"></span>
-                <span class="ml-1 text-xs text-gray-400">AI 正在回复</span>
               </div>
             </div>
           </div>
@@ -605,6 +497,7 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
               class="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 pr-20 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-100"
               rows="3"
               placeholder="输入您的问题或指令 (Shift + Enter 换行)..."
+              :maxlength="maxChars"
               @keydown="handleKeydown"
             ></textarea>
             <!-- Bottom-left: attach icon -->
@@ -624,7 +517,7 @@ const agentLabel = computed(() => agents.find(a => a.value === selectedAgent.val
               </span>
               <button
                 class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white transition hover:bg-blue-700 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                :disabled="!inputText.trim() || charCount > maxChars || sendingMessage || loadingConversation"
+                :disabled="!inputText.trim()"
                 @click="sendMessage"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
