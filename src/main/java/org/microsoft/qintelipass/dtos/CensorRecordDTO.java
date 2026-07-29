@@ -1,0 +1,35 @@
+package org.microsoft.qintelipass.dtos;
+
+import org.microsoft.qintelipass.models.CensorRecord;
+
+import java.time.LocalDateTime;
+
+public record CensorRecordDTO(
+        Long id,
+        Long userId,
+        String username,
+        String phone,
+        String department,
+        String modelName,
+        String hitKeywords,
+        String inputExcerpt,
+        String outputExcerpt,
+        boolean adminNotified,
+        LocalDateTime createdAt
+) {
+    public static CensorRecordDTO from(CensorRecord record) {
+        return new CensorRecordDTO(
+                record.getId(),
+                record.getUserId(),
+                record.getUsername(),
+                record.getPhone(),
+                record.getDepartment(),
+                record.getModelName(),
+                record.getHitKeywords(),
+                record.getInputExcerpt(),
+                record.getOutputExcerpt(),
+                record.isAdminNotified(),
+                record.getCreatedAt()
+        );
+    }
+}

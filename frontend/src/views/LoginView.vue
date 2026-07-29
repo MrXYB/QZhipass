@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Lock, Message, Phone, User } from '@element-plus/icons-vue'
+import {computed, onBeforeUnmount, reactive, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {Lock, Message, Phone, User} from '@element-plus/icons-vue'
 import BrandLogo from '../components/BrandLogo.vue'
-import { isValidMobile, sendSmsCode } from '../api/auth'
-import { useAuthStore } from '../stores/auth'
+import {isValidMobile, sendSmsCode} from '../api/auth'
+import {useAuthStore} from '../stores/auth'
+// 注销用户弹窗处理：检测到 cancelled 错误时弹出注销提示，其他错误抛出交由原逻辑处理
+import {handleLoginError} from '../utils/cancelledUserHandler'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,7 +41,7 @@ const canSubmitSms = computed(
 const smsCodeButtonText = computed(() => (countdown.value > 0 ? `${countdown.value}s` : '获取验证码'))
 
 async function redirectAfterLogin() {
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/chat'
   await router.push(redirect)
 }
 
@@ -54,7 +56,12 @@ async function handlePasswordLogin() {
     await authStore.passwordLogin(normalizedPasswordMobile.value, passwordForm.password)
     await redirectAfterLogin()
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '手机号或密码登录失败')
+    // 先交给注销用户处理器判断，是注销错误则弹窗，否则抛出走原逻辑
+    try {
+      handleLoginError(error)
+    } catch {
+      ElMessage.error(error instanceof Error ? error.message : '手机号或密码登录失败')
+    }
   } finally {
     submitting.value = false
   }
@@ -106,7 +113,12 @@ async function handleSmsLogin() {
     await authStore.smsLogin(normalizedSmsMobile.value, smsForm.smsCode.trim())
     await redirectAfterLogin()
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '验证码登录失败')
+    // 先交给注销用户处理器判断，是注销错误则弹窗，否则抛出走原逻辑
+    try {
+      handleLoginError(error)
+    } catch {
+      ElMessage.error(error instanceof Error ? error.message : '验证码登录失败')
+    }
   } finally {
     submitting.value = false
   }
