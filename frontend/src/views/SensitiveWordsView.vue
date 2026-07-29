@@ -11,6 +11,7 @@ import {
   Search,
   Setting,
   Upload,
+  User,
   Warning,
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -244,6 +245,20 @@ onMounted(() => {
         >
           <el-icon :size="16"><Document /></el-icon>
           <span v-show="!sidebarCollapsed" class="truncate">触发日志</span>
+        </router-link>
+        <router-link
+          to="/admin/alerts"
+          class="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-gray-800 hover:text-white no-underline"
+        >
+          <el-icon :size="16"><Bell /></el-icon>
+          <span v-show="!sidebarCollapsed" class="truncate">告警</span>
+        </router-link>
+        <router-link
+          to="/admin/users"
+          class="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-gray-800 hover:text-white no-underline"
+        >
+          <el-icon :size="16"><User /></el-icon>
+          <span v-show="!sidebarCollapsed" class="truncate">用户管理</span>
         </router-link>
         <button
           class="mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-gray-800 hover:text-white"
