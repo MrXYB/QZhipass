@@ -8,18 +8,19 @@ import org.microsoft.qintelipass.response.ResponseBody;
 import org.microsoft.qintelipass.services.RedisService;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.Map;
 
 @Slf4j
+@Component
 public class MobileCodeLoginStrategy implements ILoginStrategy {
 
     /** 测试用万能验证码，Redis 中无验证码时允许此固定码登录 */
     private static final String TEST_CODE = "123456";
-
     @Autowired
-    private UserService userService;
+    private  UserService userService;
     private final RedisService redisService;
     public MobileCodeLoginStrategy(RedisService redisService) {
         this.redisService = redisService;
