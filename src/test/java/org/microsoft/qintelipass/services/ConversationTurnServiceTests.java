@@ -82,7 +82,7 @@ class ConversationTurnServiceTests {
         when(titleGenerator.generateTitle("hello", "answer")).thenReturn("测试标题");
         when(tokenCounter.count(any())).thenReturn(2);
 
-        ConversationTurnResponse response = service.send(1001L, 1L, request("hello", "req-1"));
+        ConversationTurnResponse response = service.send(User.builder().id(1001L).build(), 1L, request("hello", "req-1"));
 
         assertThat(response.userMessage().role()).isEqualTo("USER");
         assertThat(response.assistantMessage().content()).isEqualTo("answer");
@@ -100,7 +100,7 @@ class ConversationTurnServiceTests {
         when(messageRepository.findFirstByConversation_IdAndRequestIdAndRole(
                 1L, "req-1", ConversationMessageRole.USER)).thenReturn(Optional.of(user));
 
-        ConversationTurnResponse response = service.send(1001L, 1L, request("hello", "req-1"));
+        ConversationTurnResponse response = service.send(User.builder().id(1001L).build(), 1L, request("hello", "req-1"));
 
         assertThat(response.assistantMessage().id()).isEqualTo(12L);
         verify(aiChatClient, never()).complete(any(), anyInt(), anyDouble());
@@ -109,7 +109,7 @@ class ConversationTurnServiceTests {
     @Test
     void rejectsPromptOverTwoThousandUnicodeCharacters() {
         assertThrows(BadRequestException.class,
-                () -> service.send(1001L, 1L, request("问".repeat(2001), "req-2")));
+                () -> service.send(User.builder().id(1001L).build(), 1L, request("问".repeat(2001), "req-2")));
         verify(aiChatClient, never()).complete(any(), anyInt(), anyDouble());
     }
 
@@ -139,7 +139,7 @@ class ConversationTurnServiceTests {
                 .thenThrow(new IllegalStateException("provider unavailable"));
 
         assertThrows(IllegalStateException.class,
-                () -> service.sendNew(1001L, request("hello", "req-failed")));
+                () -> service.sendNew(User.builder().id(1001L).build(), request("hello", "req-failed")));
 
         assertThat(savedConversation.get().getStatus()).isEqualTo(Conversation.STATUS_FAILED);
         assertThat(savedConversation.get().getFirstAnsweredAt()).isNull();

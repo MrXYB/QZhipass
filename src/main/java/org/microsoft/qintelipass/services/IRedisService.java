@@ -1,9 +1,7 @@
 package org.microsoft.qintelipass.services;
 
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
 
-@Service
 public interface IRedisService<T> {
     void setValue(String key, T value);
     T getValue(String key);

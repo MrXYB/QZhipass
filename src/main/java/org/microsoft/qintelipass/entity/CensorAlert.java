@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.microsoft.qintelipass.enums.CensorAlertStatus;
-import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -26,8 +26,9 @@ public class CensorAlert {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, updatable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false, updatable = false)
+    private User user;
 
     @Column(name = "employee_id", nullable = false, updatable = false, length = 50)
     private String employeeId;
@@ -63,18 +64,17 @@ public class CensorAlert {
     @Column(name = "status", nullable = false)
     private CensorAlertStatus status = CensorAlertStatus.PENDING;
 
-    @CreatedDate
     @CreationTimestamp
     @Column(name = "triggered_at", nullable = false, updatable = false)
     private LocalDateTime triggeredAt;
 
-    @CreationTimestamp
     @Column(name = "notice_sent_at", updatable = false)
     private LocalDateTime noticeSentAt;
 
     @Column(name = "email", updatable = false, length = 150)
     private String email;
 
+    @UpdateTimestamp
     @Column(name = "handled_at")
     private LocalDateTime handledAt;
 
@@ -86,10 +86,6 @@ public class CensorAlert {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        if (triggeredAt == null) {
-            triggeredAt = now;
-        }
         if (noticeSentAt == null) {
             noticeSentAt = triggeredAt;
         }

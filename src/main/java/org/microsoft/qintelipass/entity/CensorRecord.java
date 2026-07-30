@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -24,8 +23,9 @@ public class CensorRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, updatable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false, updatable = false)
+    private User user;
 
     @Column(name = "username", nullable = false, updatable = false, length = 100)
     private String username;
@@ -55,7 +55,7 @@ public class CensorRecord {
     @Setter
     @Column(name = "alert_counted", nullable = false)
     private boolean alertCounted = true;
-    @CreatedDate
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -63,7 +63,7 @@ public class CensorRecord {
     protected CensorRecord() {
     }
 
-    public CensorRecord(Long userId,
+    public CensorRecord(User user,
                         String username,
                         String phone,
                         String department,
@@ -71,7 +71,7 @@ public class CensorRecord {
                         String hitKeywords,
                         String inputExcerpt,
                         String outputExcerpt) {
-        this.userId = userId;
+        this.user = user;
         this.username = username;
         this.phone = phone;
         this.department = department;

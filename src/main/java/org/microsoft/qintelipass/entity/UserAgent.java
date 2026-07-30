@@ -2,6 +2,8 @@ package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.microsoft.qintelipass.util.Snowflake;
 
 import java.time.LocalDateTime;
@@ -29,8 +31,9 @@ public class UserAgent {
     @Column(name = "id", updatable = false, nullable = false, unique = true)
     private Long id = Snowflake.nextId();
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "name", nullable = false, length = 20)
     private String name;
@@ -41,28 +44,18 @@ public class UserAgent {
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        if (createdAt == null) {
-            createdAt = now;
-        }
-        if (updatedAt == null) {
-            updatedAt = now;
-        }
         if (status == null) {
             status = STATUS_ACTIVE;
         }
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

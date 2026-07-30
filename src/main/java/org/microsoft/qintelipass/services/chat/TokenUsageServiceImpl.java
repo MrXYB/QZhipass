@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -39,6 +38,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     private final TokenDailySummaryRepository tokenDailySummaryRepository;
     private final ModelsRepository modelsRepository;
     private final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+
     @Autowired
     public TokenUsageServiceImpl(RedisTemplate<String, String> redisTemplate,
                                   UserService userService,
@@ -56,12 +56,13 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
     @Override
     @Transactional
-    public boolean recordTokenUsage(Long userId, Long modelId, int tokensUsed) {
-        Optional<Models> model = modelsRepository.findById(modelId);
-        if (tokensUsed <= 0 || userId == null || model.isEmpty()) {
+    public boolean recordTokenUsage(User user, Models model, int tokensUsed) {
+        if (tokensUsed <= 0 || user == null || model == null) {
             return false;
         }
 
+        Long userId = user.getId();
+        Long modelId = model.getId();
         String today = getTodayDateString();
         String usageKey = getUsageKey(today, userId);
         String rankKey = getRankKey(today);
@@ -83,12 +84,10 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
         TokenUsageLog logEntry = TokenUsageLog.builder()
                 .id(Snowflake.nextId())
-                .user(userService.getUserById(userId))
-                .model(model.get())
-                .id(Snowflake.nextId())
+                .user(user)
+                .model(model)
                 .tokensUsed(tokensUsed)
                 .usageDate(LocalDate.now())
-                .createdAt(OffsetDateTime.now())
                 .build();
         tokenUsageLogRepository.save(logEntry);
 
@@ -97,29 +96,28 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     }
 
     @Override
-    public boolean checkTokenLimit(Long userId) {
-        long limit = getUserTokenLimit(userId);
-        long currentUsage = getCurrentTokenUsage(userId);
+    public boolean checkTokenLimit(User user) {
+        long limit = getUserTokenLimit(user);
+        long currentUsage = getCurrentTokenUsage(user.getId());
         boolean exceeded = currentUsage >= limit;
 
         if (exceeded) {
-            log.warn("User {} exceeded token limit: usage={}, limit={}", userId, currentUsage, limit);
+            log.warn("User {} exceeded token limit: usage={}, limit={}", user.getId(), currentUsage, limit);
         }
 
         return !exceeded;
     }
 
     @Override
-    public UserTokenUsageDTO getUserTokenUsage(Long userId) {
-        User user = userService.getUserById(userId);
-        String userName = user != null ? user.getName() : "Unknown";
-        String department = user != null ? user.getDepartment() : "Unknown";
+    public UserTokenUsageDTO getUserTokenUsage(User user) {
+        String userName = user.getName();
+        String department = user.getDepartment();
 
-        long currentUsage = getCurrentTokenUsage(userId);
-        long limit = getUserTokenLimit(userId);
+        long currentUsage = getCurrentTokenUsage(user.getId());
+        long limit = getUserTokenLimit(user);
 
         return UserTokenUsageDTO.builder()
-                .userId(userId)
+                .userId(user.getId())
                 .userName(userName)
                 .tokenUsed(currentUsage)
                 .tokenLimit(limit)
@@ -146,8 +144,8 @@ public class TokenUsageServiceImpl implements TokenUsageService {
             Double score = tuple.getScore();
             Long totalTokens = score != null ? score.longValue() : 0L;
 
-            User user = userService.getUserById(userId);
-            String userName = user != null ? user.getName() : "Unknown";
+            User u = userService.getUserById(userId);
+            String userName = u != null ? u.getName() : "Unknown";
 
             result.add(TokenUsageRankDTO.builder()
                     .userId(userId)
@@ -161,7 +159,8 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     }
 
     @Override
-    public long getUserTokenLimit(Long userId) {
+    public long getUserTokenLimit(User user) {
+        Long userId = user.getId();
         String limitKey = LIMIT_KEY_PREFIX + userId;
         String limitStr = redisTemplate.opsForValue().get(limitKey);
 
@@ -173,7 +172,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
             }
         }
 
-        Optional<DailyConfig> config = dailyConfigRepository.findByUserId(userId);
+        Optional<DailyConfig> config = dailyConfigRepository.findByUser_Id(userId);
         if (config.isPresent()) {
             return config.get().getDailyLimit();
         }
@@ -182,14 +181,15 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     }
 
     @Override
-    public void setUserTokenLimit(User userId, long limit) {
+    public void setUserTokenLimit(User user, long limit) {
         if (limit < 0) {
             throw new IllegalArgumentException("Token limit must be positive");
         }
+        Long userId = user.getId();
         String limitKey = LIMIT_KEY_PREFIX + userId;
         redisTemplate.opsForValue().set(limitKey, String.valueOf(limit));
 
-        Optional<DailyConfig> existingConfig = dailyConfigRepository.findByUserId(userId);
+        Optional<DailyConfig> existingConfig = dailyConfigRepository.findByUser_Id(userId);
         if (existingConfig.isPresent()) {
             DailyConfig config = existingConfig.get();
             config.setDailyLimit(limit);
@@ -234,9 +234,12 @@ public class TokenUsageServiceImpl implements TokenUsageService {
             Long userId = Long.valueOf(tuple.getValue());
             Double score = tuple.getScore();
             long usage = score != null ? score.longValue() : 0L;
-            long limit = getUserTokenLimit(userId);
-            if (usage >= limit) {
-                overuseCount++;
+            User u = userService.getUserById(userId);
+            if (u != null) {
+                long limit = getUserTokenLimit(u);
+                if (usage >= limit) {
+                    overuseCount++;
+                }
             }
         }
         return overuseCount;
@@ -361,7 +364,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
             User user = userService.getUserById(userId);
             if (user != null) {
-                long limit = getUserTokenLimit(userId);
+                long limit = getUserTokenLimit(user);
                 Map<String, Object> userStat = new HashMap<>();
                 userStat.put("userId", userId);
                 userStat.put("userName", user.getName());
@@ -386,13 +389,13 @@ public class TokenUsageServiceImpl implements TokenUsageService {
             Long modelId = (Long) row[0];
             Long totalTokens = (Long) row[1];
 
-            Optional<TokenDailySummary> existingSummary = tokenDailySummaryRepository.findByUsageDateAndModelId(today, modelId);
+            Optional<TokenDailySummary> existingSummary = tokenDailySummaryRepository.findByUsageDateAndModel_Id(today, modelId);
             Optional<Models> model = modelsRepository.findById(modelId);
             if (existingSummary.isPresent()) {
                 TokenDailySummary summary = existingSummary.get();
                 summary.setTotalTokens(totalTokens);
                 tokenDailySummaryRepository.save(summary);
-            } else if (model.isPresent()){
+            } else if (model.isPresent()) {
                 TokenDailySummary summary = TokenDailySummary.builder()
                         .usageDate(today)
                         .model(model.get())

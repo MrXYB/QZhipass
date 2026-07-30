@@ -45,8 +45,7 @@ public class ProfileController {
                 "id", user.getId(),
                 "name", user.getName(),
                 "phone", user.getPhone(),
-                "status", user.getStatus(),
-                "wechat", user.getWechat()
+                "status", user.getStatus()
             )
         ));
     }

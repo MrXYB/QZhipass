@@ -3,9 +3,8 @@ package org.microsoft.qintelipass.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.microsoft.qintelipass.util.Snowflake;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 
@@ -42,12 +41,12 @@ public class PublicAgentTemplate {
 
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
-    @CreatedDate
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    @LastModifiedDate
-    @CreationTimestamp
+
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -56,7 +55,7 @@ public class PublicAgentTemplate {
         if (status == null) {
             status = STATUS_ACTIVE;
         }
-        if (id == null){
+        if (id == null) {
             id = Snowflake.nextId();
         }
     }

@@ -8,11 +8,11 @@ import java.util.Optional;
 
 public interface UserAgentRepository extends JpaRepository<UserAgent, Long> {
 
-    List<UserAgent> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, String status);
+    List<UserAgent> findByUser_IdAndStatusOrderByCreatedAtDesc(Long userId, String status);
 
-    Optional<UserAgent> findByIdAndUserIdAndStatus(Long id, Long userId, String status);
+    Optional<UserAgent> findByIdAndUser_IdAndStatus(Long id, Long userId, String status);
 
-    Optional<UserAgent> findByUserIdAndNameAndStatus(Long userId, String name, String status);
+    Optional<UserAgent> findByUser_IdAndNameAndStatus(Long userId, String name, String status);
 
-    long countByUserIdAndStatus(Long userId, String status);
+    long countByUser_IdAndStatus(Long userId, String status);
 }

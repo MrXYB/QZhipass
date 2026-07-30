@@ -2,10 +2,12 @@ package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.microsoft.qintelipass.util.Snowflake;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
 @Setter
 @Getter
@@ -23,18 +25,22 @@ public class TokenDailySummary {
     @Id
     @Column(name = "id", updatable = false, nullable = false, unique = true)
     private Long id = Snowflake.nextId();
+
     @Column(name = "usage_date", nullable = false)
     private LocalDate usageDate;
-    @ManyToOne
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "model_id", nullable = false)
     private Models model;
+
     @Column(name = "total_tokens", nullable = false)
     private Long totalTokens;
-    @Column(name = "updated_at")
-    private OffsetDateTime updatedAt = OffsetDateTime.now();
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }

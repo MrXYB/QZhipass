@@ -85,7 +85,7 @@ public class ConversationService {
         int safePage = normalizePage(page);
         int safeLimit = normalizeLimit(limit);
         return conversationRepository
-                .findByUserIdAndStatusOrderByLastMessageAtDescUpdatedAtDescIdDesc(
+                .findByUser_IdAndStatusOrderByLastMessageAtDescUpdatedAtDescIdDesc(
                         userId,
                         Conversation.STATUS_ACTIVE,
                         PageRequest.of(safePage, safeLimit)
@@ -175,7 +175,7 @@ public class ConversationService {
     private Conversation requireOwnedConversation(User userId, Long conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation does not exist."));
-        if (!conversation.getUser().equals(userId)) {
+        if (!conversation.getUser().getId().equals(userId.getId())) {
             throw new ForbiddenException("Conversation does not belong to current user.");
         }
         return conversation;

@@ -137,15 +137,16 @@ public class CensorAlertService {
     }
 
     private boolean evaluateRule(CensorRecord record, CensorAlertRule rule) {
+        Long userId = record.getUser().getId();
         LocalDateTime periodStart = record.getCreatedAt().minusDays(rule.getPeriodDays() - 1L).toLocalDate().atStartOfDay();
         CensorAlert latestHandled = alertRepository
-                .findFirstByUserIdAndStatusOrderByTriggeredAtDesc(record.getUserId(), CensorAlertStatus.HANDLED)
+                .findFirstByUser_IdAndStatusOrderByTriggeredAtDesc(userId, CensorAlertStatus.HANDLED)
                 .orElse(null);
         if (latestHandled != null && latestHandled.getHandledAt() != null && latestHandled.getHandledAt().isAfter(periodStart)) {
             periodStart = latestHandled.getHandledAt();
         }
-        long triggerCount = recordRepository.countByUserIdAndAlertCountedTrueAndCreatedAtBetween(
-                record.getUserId(), periodStart, record.getCreatedAt().plusNanos(1));
+        long triggerCount = recordRepository.countByUser_IdAndAlertCountedTrueAndCreatedAtBetween(
+                userId, periodStart, record.getCreatedAt().plusNanos(1));
         if (triggerCount < rule.getThreshold()) {
             return false;
         }
@@ -153,7 +154,7 @@ public class CensorAlertService {
         LocalDateTime dayStart = record.getCreatedAt().toLocalDate().atStartOfDay();
         LocalDateTime nextDay = dayStart.plusDays(1);
         CensorAlert existingToday = alertRepository
-                .findFirstByUserIdAndTriggeredAtBetweenOrderByTriggeredAtDesc(record.getUserId(), dayStart, nextDay)
+                .findFirstByUser_IdAndTriggeredAtBetweenOrderByTriggeredAtDesc(userId, dayStart, nextDay)
                 .orElse(null);
         if (existingToday != null) {
             if (existingToday.getStatus() == CensorAlertStatus.PENDING) {
@@ -164,7 +165,7 @@ public class CensorAlertService {
         }
 
         CensorAlert existingPending = alertRepository
-                .findFirstByUserIdAndStatusOrderByTriggeredAtDesc(record.getUserId(), CensorAlertStatus.PENDING)
+                .findFirstByUser_IdAndStatusOrderByTriggeredAtDesc(userId, CensorAlertStatus.PENDING)
                 .orElse(null);
         if (existingPending != null && existingPending.getTriggeredAt().toLocalDate().isEqual(record.getCreatedAt().toLocalDate())) {
             existingPending.setCurrentCount(triggerCount);
@@ -174,8 +175,8 @@ public class CensorAlertService {
 
         CensorAlert alert = new CensorAlert();
         alert.setId(Snowflake.nextId());
-        alert.setUserId(record.getUserId());
-        alert.setEmployeeId(String.valueOf(record.getUserId()));
+        alert.setUser(record.getUser());
+        alert.setEmployeeId(String.valueOf(userId));
         alert.setName(record.getUsername());
         alert.setDepartment(record.getDepartment());
         alert.setPosition("");

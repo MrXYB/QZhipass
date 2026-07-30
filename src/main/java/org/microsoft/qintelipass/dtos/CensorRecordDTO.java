@@ -20,7 +20,7 @@ public record CensorRecordDTO(
     public static CensorRecordDTO from(CensorRecord record) {
         return new CensorRecordDTO(
                 record.getId(),
-                record.getUserId(),
+                record.getUser().getId(),
                 record.getUsername(),
                 record.getPhone(),
                 record.getDepartment(),

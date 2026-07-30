@@ -1,11 +1,9 @@
 package org.microsoft.qintelipass.services;
 
 import org.microsoft.qintelipass.entity.User;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service
 public interface UserService {
     User getUserById(Long userId);
     User getUserByPhone(String phone);

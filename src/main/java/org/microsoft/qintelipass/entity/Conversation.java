@@ -3,6 +3,10 @@ package org.microsoft.qintelipass.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.microsoft.qintelipass.util.Snowflake;
+import org.springframework.data.domain.Persistable;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -18,15 +22,13 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_conversations_model_key", columnList = "model_key")
         }
 )
-// 对话归属使用 MySQL 用户表 user.id 的 BIGINT 编号。
-public class Conversation {
+public class Conversation implements Persistable<Long> {
     public static final String DEFAULT_TITLE = "\u65b0\u5efa\u5bf9\u8bdd";
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_FAILED = "FAILED";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
@@ -55,11 +57,13 @@ public class Conversation {
     private LocalDateTime lastSavedAt;
 
     @Version
-    private Long version;
+    private Long version = 0L;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -68,21 +72,35 @@ public class Conversation {
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-        lastMessageAt = now;
-        lastSavedAt = now;
+        if (id == null) {
+            id = Snowflake.nextId();
+        }
         if (!StringUtils.hasText(title)) {
             title = DEFAULT_TITLE;
         }
         if (!StringUtils.hasText(status)) {
             status = STATUS_ACTIVE;
         }
+        if (lastMessageAt == null) {
+            lastMessageAt = LocalDateTime.now();
+        }
+        if (lastSavedAt == null) {
+            lastSavedAt = LocalDateTime.now();
+        }
+        if (version == null) {
+            version = 0L;
+        }
     }
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (lastMessageAt == null) {
+            lastMessageAt = LocalDateTime.now();
+        }
+    }
+
+    @Override
+    public boolean isNew() {
+        return version == null || version == 0L;
     }
 }

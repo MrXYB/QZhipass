@@ -8,7 +8,9 @@ import org.microsoft.qintelipass.exceptions.ForbiddenException;
 import org.microsoft.qintelipass.exceptions.NotFoundException;
 import org.microsoft.qintelipass.entity.AiModelConfig;
 import org.microsoft.qintelipass.entity.Conversation;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.repository.AiModelConfigRepository;
+import org.microsoft.qintelipass.repository.ConversationMemoryRepository;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
 import org.microsoft.qintelipass.dtos.request.CreateConversationRequest;
@@ -19,6 +21,7 @@ import org.microsoft.qintelipass.services.chat.AiModelService;
 import org.microsoft.qintelipass.services.chat.ConversationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.stream.IntStream;
@@ -35,8 +38,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 class ConversationServiceTests {
-    private static final Long USER_ONE = 1001L;
-    private static final Long USER_TWO = 1002L;
+    private static final Long USER_ONE_ID = 1001L;
+    private static final Long USER_TWO_ID = 1002L;
+
+    private User userOne;
+    private User userTwo;
 
     @Autowired
     private ConversationService conversationService;
@@ -51,13 +57,32 @@ class ConversationServiceTests {
     private ConversationRepository conversationRepository;
 
     @Autowired
+    private ConversationMemoryRepository memoryRepository;
+
+    @Autowired
     private ConversationMessageRepository messageRepository;
+
+    @Autowired
+    private org.microsoft.qintelipass.repository.UserRepository userRepository;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     @BeforeEach
     void setUp() {
         messageRepository.deleteAll();
-        conversationRepository.deleteAll();
+        transactionTemplate.executeWithoutResult(status -> {
+            memoryRepository.deleteAllInBulk();
+            conversationRepository.deleteAllInBulk();
+        });
         modelConfigRepository.deleteAll();
+        userRepository.deleteAll();
+
+        userOne = User.builder().id(USER_ONE_ID).name("Alice").phone("13800000001").build();
+        userOne = userRepository.save(userOne);
+        userTwo = User.builder().id(USER_TWO_ID).name("Bob").phone("13800000002").build();
+        userTwo = userRepository.save(userTwo);
+
         modelConfigRepository.save(model("gpt4-omni", "GPT-4 Omni", "OPENAI", true, 10));
         modelConfigRepository.save(model("gpt4-turbo", "GPT-4 Turbo", "OPENAI", true, 20));
         modelConfigRepository.save(model("claude-3.5", "Claude 3.5 Sonnet", "ANTHROPIC", true, 30));
@@ -68,8 +93,8 @@ class ConversationServiceTests {
 
     @Test
     void createsBlankConversationWithDefaultTitleAndUniqueIds() {
-        ConversationResponse first = conversationService.createConversation(USER_ONE, null);
-        ConversationResponse second = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse first = conversationService.createConversation(userOne, null);
+        ConversationResponse second = conversationService.createConversation(userOne, null);
 
         assertThat(first.title()).isEqualTo(Conversation.DEFAULT_TITLE);
         assertThat(second.title()).isEqualTo(Conversation.DEFAULT_TITLE);
@@ -80,31 +105,31 @@ class ConversationServiceTests {
 
     @Test
     void listsOnlyCurrentUserConversationsInRecentOrder() throws InterruptedException {
-        ConversationResponse first = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse first = conversationService.createConversation(userOne, null);
         Thread.sleep(5);
-        conversationService.createConversation(USER_TWO, null);
+        conversationService.createConversation(userTwo, null);
         Thread.sleep(5);
-        ConversationResponse second = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse second = conversationService.createConversation(userOne, null);
 
-        List<ConversationSummaryResponse> initialList = conversationService.listRecentConversations(USER_ONE, 20);
+        List<ConversationSummaryResponse> initialList = conversationService.listRecentConversations(USER_ONE_ID, 20);
         assertThat(initialList).extracting(ConversationSummaryResponse::id).containsExactly(second.id(), first.id());
 
         Thread.sleep(5);
-        conversationService.saveMessage(USER_ONE, first.id(), message("USER", "update older conversation", null));
+        conversationService.saveMessage(userOne, first.id(), message("USER", "update older conversation", null));
 
-        List<ConversationSummaryResponse> updatedList = conversationService.listRecentConversations(USER_ONE, 20);
+        List<ConversationSummaryResponse> updatedList = conversationService.listRecentConversations(USER_ONE_ID, 20);
         assertThat(updatedList).extracting(ConversationSummaryResponse::id).containsExactly(first.id(), second.id());
         assertThat(updatedList).extracting(ConversationSummaryResponse::messageCount).containsExactly(1L, 0L);
     }
 
     @Test
     void paginatesAllHistoryWithoutAHardConversationLimit() {
-        IntStream.range(0, 25).forEach(index -> conversationService.createConversation(USER_ONE, null));
+        IntStream.range(0, 25).forEach(index -> conversationService.createConversation(userOne, null));
 
         List<ConversationSummaryResponse> firstPage =
-                conversationService.listRecentConversations(USER_ONE, 0, 20);
+                conversationService.listRecentConversations(USER_ONE_ID, 0, 20);
         List<ConversationSummaryResponse> secondPage =
-                conversationService.listRecentConversations(USER_ONE, 1, 20);
+                conversationService.listRecentConversations(USER_ONE_ID, 1, 20);
 
         assertThat(firstPage).hasSize(20);
         assertThat(secondPage).hasSize(5);
@@ -116,51 +141,51 @@ class ConversationServiceTests {
 
     @Test
     void excludesPendingAndFailedFirstTurnsFromHistory() {
-        ConversationResponse active = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse active = conversationService.createConversation(userOne, null);
         Conversation pending = new Conversation();
-        pending.setUserId(USER_ONE);
+        pending.setUser(userOne);
         pending.setStatus(Conversation.STATUS_PENDING);
         conversationRepository.save(pending);
         Conversation failed = new Conversation();
-        failed.setUserId(USER_ONE);
+        failed.setUser(userOne);
         failed.setStatus(Conversation.STATUS_FAILED);
         conversationRepository.save(failed);
 
-        assertThat(conversationService.listRecentConversations(USER_ONE, 0, 20))
+        assertThat(conversationService.listRecentConversations(USER_ONE_ID, 0, 20))
                 .extracting(ConversationSummaryResponse::id)
                 .containsExactly(active.id());
     }
 
     @Test
     void rejectsAccessToAnotherUsersConversation() {
-        ConversationResponse conversation = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse conversation = conversationService.createConversation(userOne, null);
 
         assertThrows(
                 ForbiddenException.class,
-                () -> conversationService.getConversation(USER_TWO, conversation.id())
+                () -> conversationService.getConversation(userTwo, conversation.id())
         );
         assertThrows(
                 ForbiddenException.class,
-                () -> conversationService.updateModel(USER_TWO, conversation.id(), updateModel("gpt4-omni"))
+                () -> conversationService.updateModel(userTwo, conversation.id(), updateModel("gpt4-omni"))
         );
     }
 
     @Test
     void savesUserAndAssistantMessagesAndGeneratesTitleOnce() {
-        ConversationResponse conversation = conversationService.createConversation(USER_ONE, create("gpt4-omni"));
+        ConversationResponse conversation = conversationService.createConversation(userOne, create("gpt4-omni"));
 
         ConversationMessageResponse userMessage = conversationService.saveMessage(
-                USER_ONE,
+                userOne,
                 conversation.id(),
                 message("USER", "  analyze annual budget\nand cash flow  ", null)
         );
         ConversationMessageResponse assistantMessage = conversationService.saveMessage(
-                USER_ONE,
+                userOne,
                 conversation.id(),
                 message("ASSISTANT", "Sure, here is the budget analysis.", null)
         );
 
-        ConversationDetailResponse detail = conversationService.getConversation(USER_ONE, conversation.id());
+        ConversationDetailResponse detail = conversationService.getConversation(userOne, conversation.id());
         assertThat(userMessage.role()).isEqualTo("USER");
         assertThat(assistantMessage.role()).isEqualTo("ASSISTANT");
         assertThat(detail.conversation().title()).isEqualTo("analyze annual budget and");
@@ -169,29 +194,29 @@ class ConversationServiceTests {
         assertThat(detail.messages()).extracting(ConversationMessageResponse::role).containsExactly("USER", "ASSISTANT");
         assertThat(detail.model()).isEqualTo(new ModelResponse("gpt4-omni", "GPT-4 Omni", "OPENAI"));
 
-        conversationService.saveMessage(USER_ONE, conversation.id(), message("ASSISTANT", "Second answer.", null));
-        ConversationDetailResponse afterSecondAssistant = conversationService.getConversation(USER_ONE, conversation.id());
+        conversationService.saveMessage(userOne, conversation.id(), message("ASSISTANT", "Second answer.", null));
+        ConversationDetailResponse afterSecondAssistant = conversationService.getConversation(userOne, conversation.id());
         assertThat(afterSecondAssistant.conversation().title()).isEqualTo("analyze annual budget and");
     }
 
     @Test
     void doesNotOverwriteCustomizedTitleAfterFirstAssistantMessage() {
-        ConversationResponse conversation = conversationService.createConversation(USER_ONE, null);
-        conversationService.saveMessage(USER_ONE, conversation.id(), message("USER", "default title should stay", null));
-        conversationService.updateTitle(USER_ONE, conversation.id(), updateTitle("Manual title"));
+        ConversationResponse conversation = conversationService.createConversation(userOne, null);
+        conversationService.saveMessage(userOne, conversation.id(), message("USER", "default title should stay", null));
+        conversationService.updateTitle(userOne, conversation.id(), updateTitle("Manual title"));
 
-        conversationService.saveMessage(USER_ONE, conversation.id(), message("ASSISTANT", "First AI answer", null));
+        conversationService.saveMessage(userOne, conversation.id(), message("ASSISTANT", "First AI answer", null));
 
-        ConversationDetailResponse detail = conversationService.getConversation(USER_ONE, conversation.id());
+        ConversationDetailResponse detail = conversationService.getConversation(userOne, conversation.id());
         assertThat(detail.conversation().title()).isEqualTo("Manual title");
     }
 
     @Test
     void updatesConversationModelWhenModelIsAvailable() {
-        ConversationResponse conversation = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse conversation = conversationService.createConversation(userOne, null);
 
         ConversationResponse updated = conversationService.updateModel(
-                USER_ONE,
+                userOne,
                 conversation.id(),
                 updateModel("qwen3")
         );
@@ -203,32 +228,32 @@ class ConversationServiceTests {
     void rejectsInvalidInputs() {
         assertThrows(
                 BadRequestException.class,
-                () -> conversationService.createConversation(USER_ONE, create("missing-model"))
+                () -> conversationService.createConversation(userOne, create("missing-model"))
         );
 
-        ConversationResponse conversation = conversationService.createConversation(USER_ONE, null);
+        ConversationResponse conversation = conversationService.createConversation(userOne, null);
 
         assertThrows(
                 BadRequestException.class,
-                () -> conversationService.createConversation(USER_ONE, create("disabled-model"))
+                () -> conversationService.createConversation(userOne, create("disabled-model"))
         );
         assertThrows(
                 BadRequestException.class,
-                () -> conversationService.saveMessage(USER_ONE, conversation.id(), message("USER", " ", null))
+                () -> conversationService.saveMessage(userOne, conversation.id(), message("USER", " ", null))
         );
         assertThrows(
                 BadRequestException.class,
-                () -> conversationService.saveMessage(USER_ONE, conversation.id(), message("UNKNOWN", "content", null))
+                () -> conversationService.saveMessage(userOne, conversation.id(), message("UNKNOWN", "content", null))
         );
         assertThrows(
                 NotFoundException.class,
-                () -> conversationService.getConversation(USER_ONE, 999999L)
+                () -> conversationService.getConversation(userOne, 999999L)
         );
     }
 
     @Test
     void returnsOnlyEnabledModels() {
-        List<ModelResponse> models = aiModelService.listAvailableModels(USER_ONE);
+        List<ModelResponse> models = aiModelService.listAvailableModels(USER_ONE_ID);
 
         assertThat(models).containsExactly(
                 new ModelResponse("gpt4-omni", "GPT-4 Omni", "OPENAI"),

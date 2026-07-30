@@ -9,8 +9,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TokenUsageLogRepository extends JpaRepository<TokenUsageLog, Long> {
-    List<TokenUsageLog> findByUserIdAndUsageDate(Long userId, LocalDate usageDate);
-    List<TokenUsageLog> findByModelIdAndUsageDate(Long modelId, LocalDate usageDate);
+    List<TokenUsageLog> findByUser_IdAndUsageDate(Long userId, LocalDate usageDate);
+    List<TokenUsageLog> findByModel_IdAndUsageDate(Long modelId, LocalDate usageDate);
     List<TokenUsageLog> findByUsageDate(LocalDate usageDate);
     List<TokenUsageLog> findByUsageDateBetween(LocalDate startDate, LocalDate endDate);
     @Query("SELECT t.model.id, SUM(t.tokensUsed) FROM TokenUsageLog t WHERE t.usageDate = :date GROUP BY t.model.id")

@@ -4,9 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.microsoft.qintelipass.entity.AiModelConfig;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.repository.AiModelConfigRepository;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
+import org.microsoft.qintelipass.repository.UserRepository;
 import org.microsoft.qintelipass.dtos.request.ConversationTurnRequest;
 import org.microsoft.qintelipass.dtos.response.ConversationResponse;
 import org.microsoft.qintelipass.dtos.response.ConversationTurnResponse;
@@ -35,12 +37,19 @@ class RealAiConversationSmokeTest {
     @Autowired private AiModelConfigRepository modelRepository;
     @Autowired private ConversationMessageRepository messageRepository;
     @Autowired private ConversationRepository conversationRepository;
+    @Autowired private UserRepository userRepository;
+
+    private User testUser;
 
     @BeforeEach
     void setUp() {
         messageRepository.deleteAll();
         conversationRepository.deleteAll();
         modelRepository.deleteAll();
+        userRepository.deleteAll();
+
+        testUser = User.builder().id(USER_ID).name("TestUser").phone("13900000000").build();
+        testUser = userRepository.save(testUser);
 
         AiModelConfig model = new AiModelConfig();
         model.setModelKey("deepseek-v4");
@@ -53,19 +62,19 @@ class RealAiConversationSmokeTest {
 
     @Test
     void completesAndPersistsARealAiTurn() {
-        ConversationResponse conversation = conversationService.createConversation(USER_ID, null);
+        ConversationResponse conversation = conversationService.createConversation(testUser, null);
         ConversationTurnRequest request = new ConversationTurnRequest();
         request.setPrompt("这是一次后端联调测试，请用一句简短中文确认服务正常。");
         request.setModelKey("deepseek-v4");
         request.setRequestId("real-ai-smoke-1");
 
-        ConversationTurnResponse turn = conversationTurnService.send(USER_ID, conversation.id(), request);
+        ConversationTurnResponse turn = conversationTurnService.send(testUser, conversation.id(), request);
 
         assertThat(turn.assistantMessage().content()).isNotBlank();
         assertThat(turn.contextTokens()).isBetween(1, 4000);
         assertThat(turn.conversation().title()).isNotBlank();
         assertThat(turn.conversation().title().codePointCount(0, turn.conversation().title().length()))
                 .isLessThanOrEqualTo(25);
-        assertThat(conversationService.getConversation(USER_ID, conversation.id()).messages()).hasSize(2);
+        assertThat(conversationService.getConversation(testUser, conversation.id()).messages()).hasSize(2);
     }
 }

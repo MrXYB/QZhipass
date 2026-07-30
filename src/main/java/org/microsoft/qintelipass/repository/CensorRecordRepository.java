@@ -8,19 +8,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.time.LocalDateTime;
 public interface CensorRecordRepository extends JpaRepository<CensorRecord, Long> {
 
-    long countByUserIdAndCreatedAtBetween(Long userId,
+    long countByUser_IdAndCreatedAtBetween(Long userId,
                                           LocalDateTime startTime,
                                           LocalDateTime endTime);
 
-    long countByUserIdAndAlertCountedTrueAndCreatedAtBetween(Long userId,
+    long countByUser_IdAndAlertCountedTrueAndCreatedAtBetween(Long userId,
                                                              LocalDateTime startTime,
                                                              LocalDateTime endTime);
 
-    boolean existsByUserIdAndAlertCountedTrueAndCreatedAtBetween(Long userId,
+    boolean existsByUser_IdAndAlertCountedTrueAndCreatedAtBetween(Long userId,
                                                                  LocalDateTime startTime,
                                                                  LocalDateTime endTime);
 
-    Page<CensorRecord> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+    Page<CensorRecord> findByUser_IdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     Page<CensorRecord> findAllByOrderByCreatedAtDesc(Pageable pageable);
 

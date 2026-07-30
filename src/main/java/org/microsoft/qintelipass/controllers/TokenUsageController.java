@@ -4,9 +4,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.microsoft.qintelipass.dtos.TokenUsageRankDTO;
 import org.microsoft.qintelipass.dtos.UserTokenUsageDTO;
 import org.microsoft.qintelipass.dtos.response.ResponseBody;
+import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.exceptions.NotFoundException;
 import org.microsoft.qintelipass.scheduler.tasks.DailyAggregationTask;
 import org.microsoft.qintelipass.security.SecurityUtil;
 import org.microsoft.qintelipass.services.TokenUsageService;
+import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +23,8 @@ import java.util.Map;
 public class TokenUsageController {
     @Autowired
     private TokenUsageService tokenUsageService;
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/usage")
     public ResponseEntity<ResponseBody<UserTokenUsageDTO>> getUserUsage() {
@@ -27,7 +32,8 @@ public class TokenUsageController {
         Long userId = SecurityUtil.getCurrentUserId();
         log.info("Getting token usage for authenticated user: {}", userId);
 
-        UserTokenUsageDTO usage = tokenUsageService.getUserTokenUsage(userId);
+        User user = requireUser(userId);
+        UserTokenUsageDTO usage = tokenUsageService.getUserTokenUsage(user);
         return ResponseEntity.ok(ResponseBody.<UserTokenUsageDTO>builder()
                 .success(true)
                 .message("Token usage retrieved successfully")
@@ -41,8 +47,9 @@ public class TokenUsageController {
         Long userId = SecurityUtil.getCurrentUserId();
         log.info("Checking token limit for authenticated user: {}", userId);
 
-        boolean canProceed = tokenUsageService.checkTokenLimit(userId);
-        UserTokenUsageDTO usage = tokenUsageService.getUserTokenUsage(userId);
+        User user = requireUser(userId);
+        boolean canProceed = tokenUsageService.checkTokenLimit(user);
+        UserTokenUsageDTO usage = tokenUsageService.getUserTokenUsage(user);
 
         return ResponseEntity.ok(ResponseBody.<Map<String, Object>>builder()
                 .success(canProceed)
@@ -53,6 +60,14 @@ public class TokenUsageController {
                 ))
                 .build());
     }
+
+    private User requireUser(Long userId) {
+        User user = userService.getUserById(userId);
+        if (user == null) {
+            throw new NotFoundException("User not found: " + userId);
+        }
+        return user;
+    }
 }
 
 @Slf4j
@@ -61,6 +76,9 @@ public class TokenUsageController {
 class TokenUsageAdminController {
     @Autowired
     private TokenUsageService tokenUsageService;
+    @Autowired
+    private UserService userService;
+
     @GetMapping("/rank")
     public ResponseEntity<ResponseBody<List<TokenUsageRankDTO>>> getDailyRank(
             @RequestParam(value = "topN", defaultValue = "10") int topN) {
@@ -97,7 +115,16 @@ class TokenUsageAdminController {
             );
         }
 
-        tokenUsageService.setUserTokenLimit(userId, limit);
+        User user = userService.getUserById(userId);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(
+                    ResponseBody.<Void>builder()
+                            .success(false)
+                            .message("User not found")
+                            .build()
+            );
+        }
+        tokenUsageService.setUserTokenLimit(user, limit);
         return ResponseEntity.ok(ResponseBody.<Void>builder()
                 .success(true)
                 .message("Token limit updated successfully")
@@ -105,15 +132,16 @@ class TokenUsageAdminController {
     }
 
     @GetMapping("/statistics/total/consumption")
-    public ResponseEntity<?> tokenStat(){
+    public ResponseEntity<?> tokenStat() {
         SecurityUtil.requireAuthentication();
         Map<String, Object> stat = Map.of(
                 "tokens", tokenUsageService.getTodayTotalTokens()
         );
         return ResponseEntity.ok().body(stat);
     }
+
     @GetMapping("/statistics/overuse/users")
-    public ResponseEntity<?> overuseUsers(){
+    public ResponseEntity<?> overuseUsers() {
         SecurityUtil.requireAuthentication();
         Long users = tokenUsageService.getOveruseUsers();
         Map<String, Object> stat = Map.of(

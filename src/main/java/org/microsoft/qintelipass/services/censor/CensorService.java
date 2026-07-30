@@ -3,6 +3,7 @@ package org.microsoft.qintelipass.services.censor;
 import org.microsoft.qintelipass.dtos.CensorRecordDTO;
 import org.microsoft.qintelipass.entity.CensorKeyword;
 import org.microsoft.qintelipass.entity.CensorRecord;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.repository.CensorKeywordRepository;
 import org.microsoft.qintelipass.repository.CensorRecordRepository;
 import org.microsoft.qintelipass.util.Snowflake;
@@ -66,7 +67,7 @@ public class CensorService {
 
     
     @Transactional
-    public void checkAndRecord(Long userId,
+    public void checkAndRecord(User user,
                                String username,
                                String phone,
                                String department,
@@ -94,9 +95,9 @@ public class CensorService {
             return;
         }
 
-        boolean alertCounted = shouldCountForAlert(userId);
+        boolean alertCounted = shouldCountForAlert(user.getId());
         CensorRecord record = new CensorRecord(
-                userId,
+                user,
                 username,
                 phone,
                 department,
@@ -129,7 +130,7 @@ public class CensorService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime minuteStart = now.withSecond(0).withNano(0);
         LocalDateTime nextMinute = minuteStart.plusMinutes(1);
-        return !censorRecordRepository.existsByUserIdAndAlertCountedTrueAndCreatedAtBetween(
+        return !censorRecordRepository.existsByUser_IdAndAlertCountedTrueAndCreatedAtBetween(
                 userId,
                 minuteStart,
                 nextMinute
@@ -160,7 +161,7 @@ public class CensorService {
 
     @Transactional(readOnly = true)
     public Page<CensorRecordDTO> listRecordsByUser(Long userId, int page, int size) {
-        return censorRecordRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
+        return censorRecordRepository.findByUser_IdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
                 .map(CensorRecordDTO::from);
     }
 

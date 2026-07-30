@@ -118,7 +118,7 @@ public class ConversationController {
                 String inputContent = request != null ? request.getContent() : "";
                 String outputContent = response.content() != null ? response.content() : "";
                 censorService.checkAndRecord(
-                        user.getId(),
+                        user,
                         user.getName(),
                         user.getPhone(),
                         user.getDepartment() != null ? user.getDepartment() : "",

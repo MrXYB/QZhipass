@@ -23,9 +23,9 @@ public interface CensorAlertRepository extends JpaRepository<CensorAlert, Long>,
 
     long countByTriggeredAtBetween(LocalDateTime start, LocalDateTime end);
 
-    Optional<CensorAlert> findFirstByUserIdAndStatusOrderByTriggeredAtDesc(Long userId, CensorAlertStatus status);
+    Optional<CensorAlert> findFirstByUser_IdAndStatusOrderByTriggeredAtDesc(Long userId, CensorAlertStatus status);
 
-    Optional<CensorAlert> findFirstByUserIdAndTriggeredAtBetweenOrderByTriggeredAtDesc(
+    Optional<CensorAlert> findFirstByUser_IdAndTriggeredAtBetweenOrderByTriggeredAtDesc(
             Long userId,
             LocalDateTime start,
             LocalDateTime end

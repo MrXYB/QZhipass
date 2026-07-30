@@ -200,7 +200,7 @@ public class ConversationTurnService {
     private Conversation requireOwnedConversation(User user, Long conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation does not exist."));
-        if (!conversation.getUser().equals(user)) {
+        if (!conversation.getUser().getId().equals(user.getId())) {
             throw new ForbiddenException("Conversation does not belong to current user.");
         }
         return conversation;
