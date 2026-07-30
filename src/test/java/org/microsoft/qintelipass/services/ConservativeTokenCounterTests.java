@@ -1,6 +1,7 @@
 package org.microsoft.qintelipass.services;
 
 import org.junit.jupiter.api.Test;
+import org.microsoft.qintelipass.services.chat.ConservativeTokenCounter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

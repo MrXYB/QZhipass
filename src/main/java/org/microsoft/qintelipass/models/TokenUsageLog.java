@@ -22,10 +22,12 @@ public class TokenUsageLog {
     @Id
     @Column(name = "log_id", updatable = false, nullable = false, unique = true)
     private Long id = Snowflake.nextId();
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    @ManyToOne
     @Column(name = "model_id", nullable = false)
-    private Long modelId;
+    private Models model;
     @Column(name = "tokens_used", nullable = false)
     private Integer tokensUsed;
     @Column(name = "usage_date", nullable = false)

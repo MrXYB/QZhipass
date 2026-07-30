@@ -7,9 +7,11 @@ import org.microsoft.qintelipass.models.AiModelConfig;
 import org.microsoft.qintelipass.repository.AiModelConfigRepository;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
-import org.microsoft.qintelipass.request.ConversationTurnRequest;
-import org.microsoft.qintelipass.response.ConversationResponse;
-import org.microsoft.qintelipass.response.ConversationTurnResponse;
+import org.microsoft.qintelipass.dtos.request.ConversationTurnRequest;
+import org.microsoft.qintelipass.dtos.response.ConversationResponse;
+import org.microsoft.qintelipass.dtos.response.ConversationTurnResponse;
+import org.microsoft.qintelipass.services.chat.ConversationService;
+import org.microsoft.qintelipass.services.chat.ConversationTurnService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 

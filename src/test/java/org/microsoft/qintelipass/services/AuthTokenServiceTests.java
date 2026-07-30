@@ -2,6 +2,8 @@ package org.microsoft.qintelipass.services;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.microsoft.qintelipass.services.auth.AuthTokenService;
+import org.microsoft.qintelipass.services.redis.RedisService;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 

@@ -1,10 +1,10 @@
 package org.microsoft.qintelipass.controllers;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.microsoft.qintelipass.response.ApiResponse;
-import org.microsoft.qintelipass.response.ModelResponse;
-import org.microsoft.qintelipass.services.AiModelService;
-import org.microsoft.qintelipass.services.CurrentUserService;
+import org.microsoft.qintelipass.dtos.response.ApiResponse;
+import org.microsoft.qintelipass.dtos.response.ModelResponse;
+import org.microsoft.qintelipass.services.chat.AiModelService;
+import org.microsoft.qintelipass.services.user.CurrentUserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

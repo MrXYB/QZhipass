@@ -1,0 +1,31 @@
+package org.microsoft.qintelipass.dtos.response;
+
+import org.microsoft.qintelipass.models.ConversationMessage;
+
+import java.time.LocalDateTime;
+
+public record ConversationMessageResponse(
+        Long id,
+        Long conversationId,
+        String role,
+        String content,
+        String modelKey,
+        int tokenCount,
+        String status,
+        String requestId,
+        LocalDateTime createdAt
+) {
+    public static ConversationMessageResponse from(ConversationMessage message) {
+        return new ConversationMessageResponse(
+                message.getId(),
+                message.getConversation().getId(),
+                message.getRole().name(),
+                message.getContent(),
+                message.getModelKey(),
+                message.getTokenCount(),
+                message.getStatus().name(),
+                message.getRequestId(),
+                message.getCreatedAt()
+        );
+    }
+}

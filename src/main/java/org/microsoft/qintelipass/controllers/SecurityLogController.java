@@ -1,10 +1,9 @@
 package org.microsoft.qintelipass.controllers;
 
 import org.microsoft.qintelipass.dtos.CensorRecordDTO;
-import org.microsoft.qintelipass.response.ApiResponse;
-import org.microsoft.qintelipass.services.CensorService;
+import org.microsoft.qintelipass.dtos.response.ApiResponse;
+import org.microsoft.qintelipass.services.censor.CensorService;
 import org.springframework.data.domain.Page;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;

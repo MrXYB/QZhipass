@@ -3,7 +3,9 @@ package org.microsoft.qintelipass.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.microsoft.qintelipass.enums.CensorAlertStatus;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -61,9 +63,12 @@ public class CensorAlert {
     @Column(name = "status", nullable = false)
     private CensorAlertStatus status = CensorAlertStatus.PENDING;
 
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "triggered_at", nullable = false, updatable = false)
     private LocalDateTime triggeredAt;
 
+    @CreationTimestamp
     @Column(name = "notice_sent_at", updatable = false)
     private LocalDateTime noticeSentAt;
 

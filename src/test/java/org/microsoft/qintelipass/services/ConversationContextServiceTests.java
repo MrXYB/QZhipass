@@ -13,6 +13,8 @@ import org.microsoft.qintelipass.models.ConversationMemory;
 import org.microsoft.qintelipass.models.ConversationMessage;
 import org.microsoft.qintelipass.repository.ConversationMemoryRepository;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
+import org.microsoft.qintelipass.services.chat.ConservativeTokenCounter;
+import org.microsoft.qintelipass.services.chat.ConversationContextService;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;

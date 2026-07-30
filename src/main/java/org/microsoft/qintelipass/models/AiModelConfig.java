@@ -3,8 +3,14 @@ package org.microsoft.qintelipass.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Temporal;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -37,24 +43,12 @@ public class AiModelConfig {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 100;
-
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
+    @LastModifiedDate
+    @CreationTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    // 模型配置创建时补齐审计时间。
-    void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    // 模型配置变更时刷新更新时间。
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

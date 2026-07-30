@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.exceptions;
 
-import org.microsoft.qintelipass.response.ApiResponse;
+import org.microsoft.qintelipass.dtos.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;

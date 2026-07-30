@@ -13,8 +13,11 @@ import org.microsoft.qintelipass.models.Conversation;
 import org.microsoft.qintelipass.models.ConversationMessage;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
-import org.microsoft.qintelipass.request.ConversationTurnRequest;
-import org.microsoft.qintelipass.response.ConversationTurnResponse;
+import org.microsoft.qintelipass.dtos.request.ConversationTurnRequest;
+import org.microsoft.qintelipass.dtos.response.ConversationTurnResponse;
+import org.microsoft.qintelipass.services.chat.AiModelService;
+import org.microsoft.qintelipass.services.chat.ConversationContextService;
+import org.microsoft.qintelipass.services.chat.ConversationTurnService;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 

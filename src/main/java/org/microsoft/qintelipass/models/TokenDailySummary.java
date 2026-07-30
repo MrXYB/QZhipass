@@ -25,8 +25,9 @@ public class TokenDailySummary {
     private Long id = Snowflake.nextId();
     @Column(name = "usage_date", nullable = false)
     private LocalDate usageDate;
-    @Column(name = "model_id", nullable = false)
-    private Long modelId;
+    @ManyToOne
+    @JoinColumn(name = "model_id", nullable = false)
+    private Models model;
     @Column(name = "total_tokens", nullable = false)
     private Long totalTokens;
     @Column(name = "updated_at")

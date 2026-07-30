@@ -1,10 +1,10 @@
 package org.microsoft.qintelipass.controllers;
 
 import lombok.extern.slf4j.Slf4j;
-import org.microsoft.qintelipass.request.CreateAgentRequest;
-import org.microsoft.qintelipass.response.AgentResponse;
+import org.microsoft.qintelipass.dtos.request.CreateAgentRequest;
+import org.microsoft.qintelipass.dtos.response.AgentResponse;
 import org.microsoft.qintelipass.security.SecurityUtil;
-import org.microsoft.qintelipass.services.AgentService;
+import org.microsoft.qintelipass.services.agent.AgentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

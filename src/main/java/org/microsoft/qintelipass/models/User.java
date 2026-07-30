@@ -43,10 +43,6 @@ public class User {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    @Column(length = 50)
-    private String wechat;
-
     @Column(nullable = false)
     private Boolean restored = false;
 

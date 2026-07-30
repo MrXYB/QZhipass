@@ -2,8 +2,8 @@ package org.microsoft.qintelipass.controllers;
 
 import org.microsoft.qintelipass.dtos.CensorAlertDTO;
 import org.microsoft.qintelipass.dtos.CensorAlertRuleDTO;
-import org.microsoft.qintelipass.response.ApiResponse;
-import org.microsoft.qintelipass.services.CensorAlertService;
+import org.microsoft.qintelipass.dtos.response.ApiResponse;
+import org.microsoft.qintelipass.services.censor.CensorAlertService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 

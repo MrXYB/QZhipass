@@ -2,6 +2,7 @@ package org.microsoft.qintelipass.services;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.microsoft.qintelipass.dtos.response.*;
 import org.microsoft.qintelipass.exceptions.BadRequestException;
 import org.microsoft.qintelipass.exceptions.ForbiddenException;
 import org.microsoft.qintelipass.exceptions.NotFoundException;
@@ -10,11 +11,13 @@ import org.microsoft.qintelipass.models.Conversation;
 import org.microsoft.qintelipass.repository.AiModelConfigRepository;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
-import org.microsoft.qintelipass.request.CreateConversationRequest;
-import org.microsoft.qintelipass.request.SaveConversationMessageRequest;
-import org.microsoft.qintelipass.request.UpdateConversationModelRequest;
-import org.microsoft.qintelipass.request.UpdateConversationTitleRequest;
+import org.microsoft.qintelipass.dtos.request.CreateConversationRequest;
+import org.microsoft.qintelipass.dtos.request.SaveConversationMessageRequest;
+import org.microsoft.qintelipass.dtos.request.UpdateConversationModelRequest;
+import org.microsoft.qintelipass.dtos.request.UpdateConversationTitleRequest;
 import org.microsoft.qintelipass.response.*;
+import org.microsoft.qintelipass.services.chat.AiModelService;
+import org.microsoft.qintelipass.services.chat.ConversationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 

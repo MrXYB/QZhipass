@@ -3,6 +3,9 @@ package org.microsoft.qintelipass.models;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 
@@ -45,10 +48,12 @@ public class CensorKeyword {
     /** 触发次数（由审核引擎递增） */
     @Column(name = "trigger_count", nullable = false)
     private long triggerCount = 0;
-
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
+    @LastModifiedDate
+    @CreationTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
@@ -57,18 +62,5 @@ public class CensorKeyword {
 
     public CensorKeyword(String keyword) {
         this.keyword = keyword;
-        this.enabled = true;
-    }
-
-    @PrePersist
-    void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

@@ -1,13 +1,13 @@
 package org.microsoft.qintelipass.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 
@@ -19,8 +19,11 @@ import java.time.LocalDateTime;
 @Table(name = "canceled_dates")
 public class CanceledUser {
     @Id
-    @Column(name = "user_id", nullable = false, unique = true)
-    private Long id;
+    @OneToOne
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    private User user;
+    @LastModifiedDate
+    @CreationTimestamp
     @Column(nullable = false)
     private LocalDateTime canceledAt;
 }
