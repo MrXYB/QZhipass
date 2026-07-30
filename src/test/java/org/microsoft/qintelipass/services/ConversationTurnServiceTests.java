@@ -6,11 +6,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.microsoft.qintelipass.ai.AiChatClient;
 import org.microsoft.qintelipass.ai.AiChatMessage;
 import org.microsoft.qintelipass.ai.AiChatResult;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.enums.ConversationMessageRole;
 import org.microsoft.qintelipass.enums.ConversationMessageStatus;
 import org.microsoft.qintelipass.exceptions.BadRequestException;
-import org.microsoft.qintelipass.models.Conversation;
-import org.microsoft.qintelipass.models.ConversationMessage;
+import org.microsoft.qintelipass.entity.Conversation;
+import org.microsoft.qintelipass.entity.ConversationMessage;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
 import org.microsoft.qintelipass.dtos.request.ConversationTurnRequest;
@@ -49,7 +50,7 @@ class ConversationTurnServiceTests {
     void setUp() {
         conversation = new Conversation();
         conversation.setId(1L);
-        conversation.setUserId(1001L);
+        conversation.setUser(User.builder().id(1001L).build());
         conversation.setTitle(Conversation.DEFAULT_TITLE);
         conversation.setStatus(Conversation.STATUS_ACTIVE);
         conversation.setCreatedAt(LocalDateTime.now());

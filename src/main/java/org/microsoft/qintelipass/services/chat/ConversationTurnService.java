@@ -2,13 +2,14 @@ package org.microsoft.qintelipass.services.chat;
 
 import org.microsoft.qintelipass.ai.AiChatClient;
 import org.microsoft.qintelipass.ai.AiChatResult;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.enums.ConversationMessageRole;
 import org.microsoft.qintelipass.enums.ConversationMessageStatus;
 import org.microsoft.qintelipass.exceptions.BadRequestException;
 import org.microsoft.qintelipass.exceptions.ForbiddenException;
 import org.microsoft.qintelipass.exceptions.NotFoundException;
-import org.microsoft.qintelipass.models.Conversation;
-import org.microsoft.qintelipass.models.ConversationMessage;
+import org.microsoft.qintelipass.entity.Conversation;
+import org.microsoft.qintelipass.entity.ConversationMessage;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
 import org.microsoft.qintelipass.dtos.request.ConversationTurnRequest;
@@ -56,8 +57,8 @@ public class ConversationTurnService {
         this.maxCompletionTokens = maxCompletionTokens;
     }
 
-    public ConversationTurnResponse send(Long userId, Long conversationId, ConversationTurnRequest request) {
-        Conversation conversation = requireOwnedConversation(userId, conversationId);
+    public ConversationTurnResponse send(User user, Long conversationId, ConversationTurnRequest request) {
+        Conversation conversation = requireOwnedConversation(user, conversationId);
         String prompt = normalizePrompt(request == null ? null : request.getPrompt());
         String requestId = normalizeRequestId(request == null ? null : request.getRequestId());
         String modelKey = aiModelService.normalizeOptionalModelKey(request == null ? null : request.getModelKey());
@@ -117,19 +118,19 @@ public class ConversationTurnService {
         );
     }
 
-    public ConversationTurnResponse sendNew(Long userId, ConversationTurnRequest request) {
+    public ConversationTurnResponse sendNew(User user, ConversationTurnRequest request) {
         normalizePrompt(request == null ? null : request.getPrompt());
         normalizeRequestId(request == null ? null : request.getRequestId());
         String modelKey = aiModelService.normalizeOptionalModelKey(request == null ? null : request.getModelKey());
 
         Conversation conversation = new Conversation();
-        conversation.setUserId(userId);
+        conversation.setUser(user);
         conversation.setTitle(Conversation.DEFAULT_TITLE);
         conversation.setModelKey(modelKey);
         conversation.setStatus(Conversation.STATUS_PENDING);
         conversation = conversationRepository.saveAndFlush(conversation);
         try {
-            return send(userId, conversation.getId(), request);
+            return send(user, conversation.getId(), request);
         } catch (RuntimeException failure) {
             markFirstTurnFailed(conversation.getId());
             throw failure;
@@ -196,10 +197,10 @@ public class ConversationTurnService {
         });
     }
 
-    private Conversation requireOwnedConversation(Long userId, Long conversationId) {
+    private Conversation requireOwnedConversation(User user, Long conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation does not exist."));
-        if (!conversation.getUserId().equals(userId)) {
+        if (!conversation.getUser().equals(user)) {
             throw new ForbiddenException("Conversation does not belong to current user.");
         }
         return conversation;

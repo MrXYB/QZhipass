@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.repository;
 
-import org.microsoft.qintelipass.models.UserAgent;
+import org.microsoft.qintelipass.entity.UserAgent;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

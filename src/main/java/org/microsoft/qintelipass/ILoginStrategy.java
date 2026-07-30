@@ -1,7 +1,7 @@
 package org.microsoft.qintelipass;
 
 
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.dtos.response.ResponseBody;
 import org.springframework.stereotype.Component;
 

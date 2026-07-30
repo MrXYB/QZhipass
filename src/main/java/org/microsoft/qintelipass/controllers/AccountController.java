@@ -6,7 +6,7 @@
 package org.microsoft.qintelipass.controllers;
 
 import lombok.Generated;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.dtos.request.CreateAccountRequest;
 import org.microsoft.qintelipass.dtos.response.ResponseBody;
 import org.microsoft.qintelipass.services.UserService;

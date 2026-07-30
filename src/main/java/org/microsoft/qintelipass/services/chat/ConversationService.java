@@ -1,20 +1,20 @@
 package org.microsoft.qintelipass.services.chat;
 
 import org.microsoft.qintelipass.dtos.response.*;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.enums.ConversationMessageRole;
 import org.microsoft.qintelipass.enums.ConversationMessageStatus;
 import org.microsoft.qintelipass.exceptions.BadRequestException;
 import org.microsoft.qintelipass.exceptions.ForbiddenException;
 import org.microsoft.qintelipass.exceptions.NotFoundException;
-import org.microsoft.qintelipass.models.Conversation;
-import org.microsoft.qintelipass.models.ConversationMessage;
+import org.microsoft.qintelipass.entity.Conversation;
+import org.microsoft.qintelipass.entity.ConversationMessage;
 import org.microsoft.qintelipass.repository.ConversationMessageRepository;
 import org.microsoft.qintelipass.repository.ConversationRepository;
 import org.microsoft.qintelipass.dtos.request.CreateConversationRequest;
 import org.microsoft.qintelipass.dtos.request.SaveConversationMessageRequest;
 import org.microsoft.qintelipass.dtos.request.UpdateConversationModelRequest;
 import org.microsoft.qintelipass.dtos.request.UpdateConversationTitleRequest;
-import org.microsoft.qintelipass.response.*;
 import org.microsoft.qintelipass.services.ConversationTitleGenerator;
 import org.microsoft.qintelipass.services.TokenCounter;
 import org.microsoft.qintelipass.util.Snowflake;
@@ -57,12 +57,12 @@ public class ConversationService {
 
     @Transactional
     // Creates a blank conversation owned by the current MySQL user id.
-    public ConversationResponse createConversation(Long userId, CreateConversationRequest request) {
+    public ConversationResponse createConversation(User userId, CreateConversationRequest request) {
         String modelKey = aiModelService.normalizeOptionalModelKey(request == null ? null : request.getModelKey());
 
         Conversation conversation = new Conversation();
         conversation.setId(Snowflake.nextId());
-        conversation.setUserId(userId);
+        conversation.setUser(userId);
         conversation.setTitle(Conversation.DEFAULT_TITLE);
         conversation.setModelKey(modelKey);
         conversation.setStatus(Conversation.STATUS_ACTIVE);
@@ -71,8 +71,8 @@ public class ConversationService {
     }
 
     @Transactional
-    public ConversationResponse createInitialConversation(Long userId) {
-        return createConversation(userId, null);
+    public ConversationResponse createInitialConversation(User user) {
+        return createConversation(user, null);
     }
 
     @Transactional(readOnly = true)
@@ -99,8 +99,8 @@ public class ConversationService {
     }
 
     @Transactional(readOnly = true)
-    public ConversationDetailResponse getConversation(Long userId, Long conversationId) {
-        Conversation conversation = requireOwnedConversation(userId, conversationId);
+    public ConversationDetailResponse getConversation(User user, Long conversationId) {
+        Conversation conversation = requireOwnedConversation(user, conversationId);
         List<ConversationMessageResponse> messages = messageRepository
                 .findByConversation_IdOrderByCreatedAtAsc(conversationId)
                 .stream()
@@ -113,11 +113,11 @@ public class ConversationService {
     @Transactional
     // Saves USER, ASSISTANT, or SYSTEM messages after conversationId + userId ownership validation.
     public ConversationMessageResponse saveMessage(
-            Long userId,
+            User user,
             Long conversationId,
             SaveConversationMessageRequest request
     ) {
-        Conversation conversation = requireOwnedConversation(userId, conversationId);
+        Conversation conversation = requireOwnedConversation(user, conversationId);
         ConversationMessageRole role = parseRole(request == null ? null : request.getRole());
         String content = normalizeMessageContent(request == null ? null : request.getContent());
         String modelKey = aiModelService.normalizeOptionalModelKey(request == null ? null : request.getModelKey());
@@ -146,11 +146,11 @@ public class ConversationService {
 
     @Transactional
     public ConversationResponse updateModel(
-            Long userId,
+            User user,
             Long conversationId,
             UpdateConversationModelRequest request
     ) {
-        Conversation conversation = requireOwnedConversation(userId, conversationId);
+        Conversation conversation = requireOwnedConversation(user, conversationId);
         String modelKey = aiModelService.requireAvailableModelKey(request == null ? null : request.getModelKey());
         conversation.setModelKey(modelKey);
         conversation.setUpdatedAt(LocalDateTime.now());
@@ -159,7 +159,7 @@ public class ConversationService {
 
     @Transactional
     public ConversationResponse updateTitle(
-            Long userId,
+            User userId,
             Long conversationId,
             UpdateConversationTitleRequest request
     ) {
@@ -172,10 +172,10 @@ public class ConversationService {
     }
 
     // Every conversation operation validates both conversation id and current MySQL user id.
-    private Conversation requireOwnedConversation(Long userId, Long conversationId) {
+    private Conversation requireOwnedConversation(User userId, Long conversationId) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation does not exist."));
-        if (!conversation.getUserId().equals(userId)) {
+        if (!conversation.getUser().equals(userId)) {
             throw new ForbiddenException("Conversation does not belong to current user.");
         }
         return conversation;

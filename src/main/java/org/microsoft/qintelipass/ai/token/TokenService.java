@@ -2,7 +2,7 @@ package org.microsoft.qintelipass.ai.token;
 
 import jakarta.annotation.PostConstruct;
 import org.microsoft.qintelipass.enums.UserStatus;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.repository.UserRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -612,7 +612,7 @@ public class TokenService {
 
     private List<User> getActiveUsers() {
         return userRepository.findAll().stream()
-                .filter(user -> user.getStatus() != UserStatus.DEACTIVATED)
+                .filter(user -> user.getStatus() != UserStatus.CANCELLED)
                 .toList();
     }
 

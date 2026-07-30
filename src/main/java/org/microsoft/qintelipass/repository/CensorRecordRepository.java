@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.repository;
 
-import org.microsoft.qintelipass.models.CensorRecord;
+import org.microsoft.qintelipass.entity.CensorRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,11 +1,10 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.microsoft.qintelipass.util.Snowflake;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.OffsetDateTime;
 
@@ -21,12 +20,16 @@ public class DailyConfig {
     @Id
     @Column(name = "config_id", updatable = false, nullable = false, unique = true)
     private Long id = Snowflake.nextId();
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @OneToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
     @Column(name = "daily_limit", nullable = false)
     private Long dailyLimit;
-    @Column(name = "model_id")
-    private Long modelId;
+    @OneToOne
+    @JoinColumn(name = "model_id")
+    private Models modelId;
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    private OffsetDateTime createdAt;
 }

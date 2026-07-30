@@ -3,7 +3,7 @@ package org.microsoft.qintelipass.services.auth;
 import org.jspecify.annotations.Nullable;
 import org.microsoft.qintelipass.IRegisterable;
 import org.microsoft.qintelipass.enums.UserStatus;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.dtos.request.RegisterRequest;
 import org.microsoft.qintelipass.services.UserService;
 import org.microsoft.qintelipass.util.Snowflake;

@@ -2,7 +2,7 @@ package org.microsoft.qintelipass.controllers;
 
 import jakarta.persistence.criteria.Predicate;
 import org.microsoft.qintelipass.dtos.CensorKeywordDTO;
-import org.microsoft.qintelipass.models.CensorKeyword;
+import org.microsoft.qintelipass.entity.CensorKeyword;
 import org.microsoft.qintelipass.repository.CensorKeywordRepository;
 import org.microsoft.qintelipass.services.censor.CensorKeywordLoader;
 import org.springframework.data.domain.Page;

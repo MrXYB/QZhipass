@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.repository;
 
-import org.microsoft.qintelipass.models.PublicAgentTemplate;
+import org.microsoft.qintelipass.entity.PublicAgentTemplate;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

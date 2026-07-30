@@ -1,8 +1,11 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.microsoft.qintelipass.util.Snowflake;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 
@@ -14,55 +17,47 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "user_agents",
+        name = "public_agent_templates",
         indexes = {
-                @Index(name = "idx_user_agents_user_id", columnList = "user_id"),
-                @Index(name = "idx_user_agents_user_name", columnList = "user_id,name")
+                @Index(name = "idx_public_templates_status", columnList = "status")
         }
 )
-public class UserAgent {
+public class PublicAgentTemplate {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
-    public static final String STATUS_DELETED = "DELETED";
+    public static final String STATUS_DISABLED = "DISABLED";
 
     @Id
     @Column(name = "id", updatable = false, nullable = false, unique = true)
-    private Long id = Snowflake.nextId();
+    private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
-
-    @Column(name = "name", nullable = false, length = 20)
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
+
+    @Column(name = "category", length = 50)
+    private String category;
 
     @Column(name = "prompt", nullable = false, columnDefinition = "TEXT")
     private String prompt;
 
     @Column(name = "status", nullable = false, length = 16)
     private String status = STATUS_ACTIVE;
-
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
+    @LastModifiedDate
+    @CreationTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
-        if (createdAt == null) {
-            createdAt = now;
-        }
-        if (updatedAt == null) {
-            updatedAt = now;
-        }
         if (status == null) {
             status = STATUS_ACTIVE;
         }
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (id == null){
+            id = Snowflake.nextId();
+        }
     }
 }

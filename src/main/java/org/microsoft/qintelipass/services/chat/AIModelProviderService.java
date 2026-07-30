@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.services.chat;
 
-import org.microsoft.qintelipass.models.Models;
+import org.microsoft.qintelipass.entity.Models;
 import org.microsoft.qintelipass.repository.ModelsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

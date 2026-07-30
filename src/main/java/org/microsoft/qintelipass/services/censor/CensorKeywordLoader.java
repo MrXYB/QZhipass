@@ -1,7 +1,7 @@
 package org.microsoft.qintelipass.services.censor;
 
 import jakarta.annotation.PostConstruct;
-import org.microsoft.qintelipass.models.CensorKeyword;
+import org.microsoft.qintelipass.entity.CensorKeyword;
 import org.microsoft.qintelipass.repository.CensorKeywordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

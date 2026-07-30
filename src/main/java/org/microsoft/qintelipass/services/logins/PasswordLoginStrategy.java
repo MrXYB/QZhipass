@@ -3,7 +3,7 @@ package org.microsoft.qintelipass.services.logins;
 import lombok.extern.slf4j.Slf4j;
 import org.microsoft.qintelipass.ILoginStrategy;
 import org.microsoft.qintelipass.enums.UserStatus;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.dtos.response.ResponseBody;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;

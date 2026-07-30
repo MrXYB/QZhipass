@@ -3,7 +3,7 @@ package org.microsoft.qintelipass.services.chat;
 import lombok.extern.slf4j.Slf4j;
 import org.microsoft.qintelipass.dtos.TokenUsageRankDTO;
 import org.microsoft.qintelipass.dtos.UserTokenUsageDTO;
-import org.microsoft.qintelipass.models.*;
+import org.microsoft.qintelipass.entity.*;
 import org.microsoft.qintelipass.repository.DailyConfigRepository;
 import org.microsoft.qintelipass.repository.ModelsRepository;
 import org.microsoft.qintelipass.repository.TokenDailySummaryRepository;
@@ -57,7 +57,8 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     @Override
     @Transactional
     public boolean recordTokenUsage(Long userId, Long modelId, int tokensUsed) {
-        if (tokensUsed <= 0 || userId == null) {
+        Optional<Models> model = modelsRepository.findById(modelId);
+        if (tokensUsed <= 0 || userId == null || model.isEmpty()) {
             return false;
         }
 
@@ -82,8 +83,8 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
         TokenUsageLog logEntry = TokenUsageLog.builder()
                 .id(Snowflake.nextId())
-                .user(userId)
-                .modelId(modelId != null ? modelId : 1L)
+                .user(userService.getUserById(userId))
+                .model(model.get())
                 .id(Snowflake.nextId())
                 .tokensUsed(tokensUsed)
                 .usageDate(LocalDate.now())
@@ -181,7 +182,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     }
 
     @Override
-    public void setUserTokenLimit(Long userId, long limit) {
+    public void setUserTokenLimit(User userId, long limit) {
         if (limit < 0) {
             throw new IllegalArgumentException("Token limit must be positive");
         }
@@ -196,7 +197,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
         } else {
             DailyConfig config = DailyConfig.builder()
                     .id(Snowflake.nextId())
-                    .userId(userId)
+                    .user(user)
                     .dailyLimit(limit)
                     .build();
             dailyConfigRepository.save(config);
@@ -386,17 +387,20 @@ public class TokenUsageServiceImpl implements TokenUsageService {
             Long totalTokens = (Long) row[1];
 
             Optional<TokenDailySummary> existingSummary = tokenDailySummaryRepository.findByUsageDateAndModelId(today, modelId);
+            Optional<Models> model = modelsRepository.findById(modelId);
             if (existingSummary.isPresent()) {
                 TokenDailySummary summary = existingSummary.get();
                 summary.setTotalTokens(totalTokens);
                 tokenDailySummaryRepository.save(summary);
-            } else {
+            } else if (model.isPresent()){
                 TokenDailySummary summary = TokenDailySummary.builder()
                         .usageDate(today)
-                        .modelId(modelId)
+                        .model(model.get())
                         .totalTokens(totalTokens)
                         .build();
                 tokenDailySummaryRepository.save(summary);
+            } else {
+                log.error("Model was notfound by id: {}", modelId);
             }
         }
 

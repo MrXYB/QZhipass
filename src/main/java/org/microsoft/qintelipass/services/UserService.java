@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.services;
 
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

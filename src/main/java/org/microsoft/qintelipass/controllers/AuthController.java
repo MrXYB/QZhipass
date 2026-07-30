@@ -9,7 +9,7 @@ import org.microsoft.qintelipass.IRegisterable;
 import org.microsoft.qintelipass.LoginStrategyFactory;
 import org.microsoft.qintelipass.configs.AdminProperties;
 import org.microsoft.qintelipass.dtos.UserDTO;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.dtos.request.LoginRequest;
 import org.microsoft.qintelipass.dtos.request.RegisterRequest;
 import org.microsoft.qintelipass.dtos.response.ResponseBody;

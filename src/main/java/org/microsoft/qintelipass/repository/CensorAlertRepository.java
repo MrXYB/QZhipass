@@ -1,7 +1,7 @@
 package org.microsoft.qintelipass.repository;
 
 import org.microsoft.qintelipass.enums.CensorAlertStatus;
-import org.microsoft.qintelipass.models.CensorAlert;
+import org.microsoft.qintelipass.entity.CensorAlert;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

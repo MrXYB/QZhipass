@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.dtos;
 
-import org.microsoft.qintelipass.models.CensorRecord;
+import org.microsoft.qintelipass.entity.CensorRecord;
 
 import java.time.LocalDateTime;
 

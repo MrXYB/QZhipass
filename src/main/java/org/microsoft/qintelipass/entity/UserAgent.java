@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,25 +14,26 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "public_agent_templates",
+        name = "user_agents",
         indexes = {
-                @Index(name = "idx_public_templates_status", columnList = "status")
+                @Index(name = "idx_user_agents_user_id", columnList = "user_id"),
+                @Index(name = "idx_user_agents_user_name", columnList = "user_id,name")
         }
 )
-public class PublicAgentTemplate {
+public class UserAgent {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
-    public static final String STATUS_DISABLED = "DISABLED";
+    public static final String STATUS_DELETED = "DELETED";
 
     @Id
     @Column(name = "id", updatable = false, nullable = false, unique = true)
     private Long id = Snowflake.nextId();
 
-    @Column(name = "name", nullable = false, length = 50)
-    private String name;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    @Column(name = "category", length = 50)
-    private String category;
+    @Column(name = "name", nullable = false, length = 20)
+    private String name;
 
     @Column(name = "prompt", nullable = false, columnDefinition = "TEXT")
     private String prompt;

@@ -1,7 +1,7 @@
 package org.microsoft.qintelipass.dtos;
 
 import org.microsoft.qintelipass.enums.CensorAlertStatus;
-import org.microsoft.qintelipass.models.CensorAlert;
+import org.microsoft.qintelipass.entity.CensorAlert;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

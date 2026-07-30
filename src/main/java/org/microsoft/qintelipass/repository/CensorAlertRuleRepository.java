@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.repository;
 
-import org.microsoft.qintelipass.models.CensorAlertRule;
+import org.microsoft.qintelipass.entity.CensorAlertRule;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

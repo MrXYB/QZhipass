@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.repository;
 
-import org.microsoft.qintelipass.models.TokenDailySummary;
+import org.microsoft.qintelipass.entity.TokenDailySummary;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;

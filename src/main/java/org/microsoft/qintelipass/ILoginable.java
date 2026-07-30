@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass;
 
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 
 public interface ILoginable {
     User loginByNameAndPassword(String username, String password);

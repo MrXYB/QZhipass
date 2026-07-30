@@ -1,10 +1,13 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.microsoft.qintelipass.enums.ConversationMessageRole;
 import org.microsoft.qintelipass.enums.ConversationMessageStatus;
+import org.microsoft.qintelipass.util.Snowflake;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
 
@@ -53,7 +56,8 @@ public class ConversationMessage {
 
     @Column(name = "request_id", length = 64)
     private String requestId;
-
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -61,5 +65,6 @@ public class ConversationMessage {
     // 消息创建时间由后端统一写入，避免信任客户端时间。
     void prePersist() {
         createdAt = LocalDateTime.now();
+        id = Snowflake.nextId();
     }
 }

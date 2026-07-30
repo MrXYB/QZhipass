@@ -1,8 +1,8 @@
 package org.microsoft.qintelipass.services.censor;
 
 import org.microsoft.qintelipass.dtos.CensorRecordDTO;
-import org.microsoft.qintelipass.models.CensorKeyword;
-import org.microsoft.qintelipass.models.CensorRecord;
+import org.microsoft.qintelipass.entity.CensorKeyword;
+import org.microsoft.qintelipass.entity.CensorRecord;
 import org.microsoft.qintelipass.repository.CensorKeywordRepository;
 import org.microsoft.qintelipass.repository.CensorRecordRepository;
 import org.microsoft.qintelipass.util.Snowflake;

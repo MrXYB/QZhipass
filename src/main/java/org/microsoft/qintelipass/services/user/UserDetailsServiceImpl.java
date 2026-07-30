@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.services.user;
 
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.security.AuthenticatedUser;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;

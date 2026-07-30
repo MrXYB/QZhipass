@@ -1,7 +1,7 @@
 package org.microsoft.qintelipass.services.auth;
 
 import org.microsoft.qintelipass.ILoginable;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;

@@ -2,7 +2,7 @@ package org.microsoft.qintelipass.services.user;
 
 import lombok.extern.slf4j.Slf4j;
 import org.microsoft.qintelipass.enums.UserStatus;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.repository.UserRepository;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +49,6 @@ public class UserServiceImpl implements UserService {
         user.setDepartment(department);
         user.setEmail(email);
         user.setPhone(phone);
-        user.setWechat(wechat);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setStatus(UserStatus.NORMAL);
         user.setCreatedAt(LocalDateTime.now());
@@ -72,7 +71,6 @@ public class UserServiceImpl implements UserService {
         existing.setName(name);
         existing.setDepartment(department);
         existing.setEmail(email);
-        existing.setWechat(wechat);
         existing.setPasswordHash(passwordEncoder.encode(password));
         existing.setStatus(UserStatus.NORMAL);
         existing.setRestored(true);

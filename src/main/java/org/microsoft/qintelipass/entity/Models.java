@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
 
 import jakarta.persistence.Column;
@@ -6,6 +6,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.time.OffsetDateTime;
@@ -30,8 +33,12 @@ public class Models {
     private String apiKey;
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
+    @CreatedDate
+    @CreationTimestamp
     @Column(name = "create_at", nullable = false, updatable = false)
     private OffsetDateTime createAt;
+    @LastModifiedDate
+    @CreationTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 }

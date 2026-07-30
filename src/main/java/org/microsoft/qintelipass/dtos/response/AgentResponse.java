@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.dtos.response;
 
-import org.microsoft.qintelipass.models.UserAgent;
+import org.microsoft.qintelipass.entity.UserAgent;
 
 import java.time.LocalDateTime;
 

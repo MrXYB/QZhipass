@@ -2,7 +2,7 @@ package org.microsoft.qintelipass.dtos;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import org.microsoft.qintelipass.models.CensorAlertRule;
+import org.microsoft.qintelipass.entity.CensorAlertRule;
 
 @Data
 public class CensorAlertRuleDTO {

@@ -14,7 +14,7 @@ public class LocalConversationTitleGenerator implements ConversationTitleGenerat
     public String generateTitle(String firstUserMessage, String firstAssistantMessage) {
         String normalized = firstUserMessage == null ? "" : firstUserMessage.replaceAll("\\s+", " ").trim();
         if (!StringUtils.hasText(normalized)) {
-            return org.microsoft.qintelipass.models.Conversation.DEFAULT_TITLE;
+            return org.microsoft.qintelipass.entity.Conversation.DEFAULT_TITLE;
         }
         return truncateCodePoints(normalized, MAX_TITLE_LENGTH);
     }

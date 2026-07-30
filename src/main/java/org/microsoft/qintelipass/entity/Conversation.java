@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,8 +29,9 @@ public class Conversation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(nullable = false, length = 120)
     private String title = DEFAULT_TITLE;
@@ -54,7 +55,6 @@ public class Conversation {
     private LocalDateTime lastSavedAt;
 
     @Version
-    @Column(nullable = false)
     private Long version;
 
     @Column(name = "created_at", nullable = false, updatable = false)

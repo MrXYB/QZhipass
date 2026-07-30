@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.models;
+package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

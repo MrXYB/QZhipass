@@ -2,9 +2,8 @@ package org.microsoft.qintelipass.services.chat;
 
 import org.microsoft.qintelipass.ai.AiChatClient;
 import org.microsoft.qintelipass.ai.AiChatMessage;
-import org.microsoft.qintelipass.models.Conversation;
+import org.microsoft.qintelipass.entity.Conversation;
 import org.microsoft.qintelipass.services.ConversationTitleGenerator;
-import org.microsoft.qintelipass.services.chat.LocalConversationTitleGenerator;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;

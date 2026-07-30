@@ -2,7 +2,7 @@ package org.microsoft.qintelipass.dtos;
 
 import lombok.*;
 import org.microsoft.qintelipass.enums.UserStatus;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.util.Snowflake;
 
 import java.time.LocalDateTime;

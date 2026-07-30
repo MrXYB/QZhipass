@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
 import org.microsoft.qintelipass.ITrafficStatService;
 import org.microsoft.qintelipass.configs.AdminProperties;
 import org.microsoft.qintelipass.enums.UserRole;
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.services.UserService;
 import org.microsoft.qintelipass.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;

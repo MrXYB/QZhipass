@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.dtos.response;
 
-import org.microsoft.qintelipass.models.AiModelConfig;
+import org.microsoft.qintelipass.entity.AiModelConfig;
 
 public record ModelResponse(
         String modelKey,

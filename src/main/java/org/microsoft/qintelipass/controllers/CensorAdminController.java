@@ -5,7 +5,7 @@
 
 package org.microsoft.qintelipass.controllers;
 
-import org.microsoft.qintelipass.models.CensorKeyword;
+import org.microsoft.qintelipass.entity.CensorKeyword;
 import org.microsoft.qintelipass.services.censor.CensorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
