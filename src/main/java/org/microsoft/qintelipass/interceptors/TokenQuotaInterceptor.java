@@ -1,8 +1,10 @@
-package org.microsoft.qintelipass.ai.token;
+package org.microsoft.qintelipass.interceptors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.microsoft.qintelipass.ai.token.UserTokenStatus;
+import org.microsoft.qintelipass.services.agent.TokenService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 

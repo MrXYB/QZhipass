@@ -1,5 +1,6 @@
-package org.microsoft.qintelipass.ai.token;
+package org.microsoft.qintelipass.repository;
 
+import org.microsoft.qintelipass.entity.TokenUsage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

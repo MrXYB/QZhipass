@@ -1,4 +1,4 @@
-package org.microsoft.qintelipass.ai.token;
+package org.microsoft.qintelipass.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

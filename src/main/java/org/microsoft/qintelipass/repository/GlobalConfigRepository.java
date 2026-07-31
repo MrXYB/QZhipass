@@ -1,5 +1,6 @@
-package org.microsoft.qintelipass.ai.token;
+package org.microsoft.qintelipass.repository;
 
+import org.microsoft.qintelipass.entity.GlobalConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

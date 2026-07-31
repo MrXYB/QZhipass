@@ -1,5 +1,6 @@
-package org.microsoft.qintelipass.ai.token;
+package org.microsoft.qintelipass.configs;
 
+import org.microsoft.qintelipass.interceptors.TokenQuotaInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
