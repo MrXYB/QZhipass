@@ -43,18 +43,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, @Nullable HttpServletResponse response, @Nullable FilterChain filterChain) throws ServletException, IOException {
         final String authorizationHeader = request.getHeader("Authorization");
 
-        String jwt;
-
         if (authorizationHeader != null && authorizationHeader.startsWith(JwtUtil.BEARER_PREFIX)) {
-            jwt = authorizationHeader.substring(JwtUtil.BEARER_PREFIX.length());
+            String jwt = authorizationHeader.substring(JwtUtil.BEARER_PREFIX.length());
 
             try {
-                if (jwtUtil.validateToken(jwt)) {
+                if (!jwtUtil.validateToken(jwt)) {
+                    log.debug("JWT token validation failed (expired or invalid)");
+                } else {
                     Long userId = null;
                     try {
                         userId = jwtUtil.extractUserId(jwt);
                     } catch (Exception e) {
-                        log.warn("Could not extract user ID from token, will try to find by username");
+                        log.debug("Could not extract user ID from token, will try to find by username");
                     }
 
                     String username = jwtUtil.extractUsername(jwt);
@@ -64,12 +64,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         user = userService.getUserById(userId);
                     }
 
-                    if (user == null) {
+                    if (user == null && username != null) {
                         user = userService.findByUsername(username);
                     }
 
-                    if (user != null) {
-                        trafficStatService.recordTraffic(user.getId());
+                    if (user == null) {
+                        log.warn("JWT token valid but user not found: userId={}, username={}", userId, username);
+                    } else {
                         UserRole role = adminProperties.isAdmin(user.getPhone())
                                 ? UserRole.ADMIN
                                 : UserRole.USER;
@@ -78,7 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 .userId(user.getId())
                                 .username(user.getName())
                                 .password(user.getPasswordHash())
-                                .role(user.getRole())
+                                .role(role)
                                 .build();
 
                         UsernamePasswordAuthenticationToken authenticationToken =
@@ -86,10 +87,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                         log.debug("User authenticated: userId={}, username={}", user.getId(), user.getName());
+
+                        try {
+                            trafficStatService.recordTraffic(user.getId());
+                        } catch (Exception trafficEx) {
+                            log.warn("Failed to record traffic for userId={}: {}", user.getId(), trafficEx.getMessage());
+                        }
                     }
                 }
             } catch (Exception e) {
-                log.info("Token validation failed: {}", e.getMessage());
+                log.warn("JWT token processing failed: {}", e.getMessage());
             }
         }
 

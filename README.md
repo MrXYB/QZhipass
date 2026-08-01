@@ -10,7 +10,7 @@ Qzhipass is an Enterprise AI Orchestration Platform
 
 </div>
 
-> ![NOTE]
+ > [NOTE]
 >
 > **System Requirements:**
 >
