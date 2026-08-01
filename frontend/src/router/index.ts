@@ -4,6 +4,8 @@ import HomeView from '../views/HomeView.vue'
 import ChatView from '../views/ChatView.vue'
 import SensitiveWordsView from '../views/SensitiveWordsView.vue'
 import SecurityLogView from '../views/SecurityLogView.vue'
+import AlertCenterView from '../views/AlertCenterView.vue'
+import UserManagementView from '../views/UserManagementView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -36,6 +38,16 @@ const router = createRouter({
       path: '/admin/security-logs',
       name: 'security-logs',
       component: SecurityLogView
+    },
+    {
+      path: '/admin/alerts',
+      name: 'alerts',
+      component: AlertCenterView
+    },
+    {
+      path: '/admin/users',
+      name: 'users',
+      component: UserManagementView
     },
     {
       path: '/:pathMatch(.*)*',

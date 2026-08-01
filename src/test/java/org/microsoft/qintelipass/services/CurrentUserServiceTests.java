@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.microsoft.qintelipass.exceptions.UnauthorizedException;
+import org.microsoft.qintelipass.services.auth.AuthTokenService;
+import org.microsoft.qintelipass.services.user.CurrentUserService;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 

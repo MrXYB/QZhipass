@@ -2,8 +2,8 @@ package org.microsoft.qintelipass.controllers;
 
 import jakarta.validation.Valid;
 import org.microsoft.qintelipass.dtos.ChatRequestDTO;
-import org.microsoft.qintelipass.services.AIChatService;
-import org.microsoft.qintelipass.services.AIModelProviderService;
+import org.microsoft.qintelipass.services.chat.AIChatService;
+import org.microsoft.qintelipass.services.chat.AIModelProviderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

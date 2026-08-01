@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.controllers;
 
-import org.microsoft.qintelipass.models.User;
+import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -45,8 +45,7 @@ public class ProfileController {
                 "id", user.getId(),
                 "name", user.getName(),
                 "phone", user.getPhone(),
-                "status", user.getStatus(),
-                "wechat", user.getWechat()
+                "status", user.getStatus()
             )
         ));
     }

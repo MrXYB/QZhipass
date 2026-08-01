@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.repository;
 
-import org.microsoft.qintelipass.models.Models;
+import org.microsoft.qintelipass.entity.Models;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

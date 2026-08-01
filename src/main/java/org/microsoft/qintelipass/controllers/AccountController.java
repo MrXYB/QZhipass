@@ -6,9 +6,9 @@
 package org.microsoft.qintelipass.controllers;
 
 import lombok.Generated;
-import org.microsoft.qintelipass.models.User;
-import org.microsoft.qintelipass.request.CreateAccountRequest;
-import org.microsoft.qintelipass.response.ResponseBody;
+import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.dtos.request.CreateAccountRequest;
+import org.microsoft.qintelipass.dtos.response.ResponseBody;
 import org.microsoft.qintelipass.services.UserService;
 import org.microsoft.qintelipass.util.QZhiPasswordPattern;
 import org.slf4j.Logger;

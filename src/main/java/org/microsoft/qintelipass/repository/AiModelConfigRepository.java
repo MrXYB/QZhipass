@@ -1,7 +1,7 @@
 package org.microsoft.qintelipass.repository;
 
 import org.jspecify.annotations.Nullable;
-import org.microsoft.qintelipass.models.AiModelConfig;
+import org.microsoft.qintelipass.entity.AiModelConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

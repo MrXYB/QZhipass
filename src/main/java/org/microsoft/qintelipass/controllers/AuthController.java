@@ -9,16 +9,13 @@ import org.microsoft.qintelipass.IRegisterable;
 import org.microsoft.qintelipass.LoginStrategyFactory;
 import org.microsoft.qintelipass.configs.AdminProperties;
 import org.microsoft.qintelipass.dtos.UserDTO;
-import org.microsoft.qintelipass.models.User;
-import org.microsoft.qintelipass.request.LoginRequest;
-import org.microsoft.qintelipass.request.RegisterRequest;
-import org.microsoft.qintelipass.response.ConversationResponse;
-import org.microsoft.qintelipass.response.ResponseBody;
-import org.microsoft.qintelipass.services.AuthTokenService;
-import org.microsoft.qintelipass.services.ConversationService;
-import org.microsoft.qintelipass.services.SmsServiceImpl;
-import org.microsoft.qintelipass.services.UserDetailsServiceImpl;
-import org.microsoft.qintelipass.services.UserService;
+import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.dtos.request.LoginRequest;
+import org.microsoft.qintelipass.dtos.request.RegisterRequest;
+import org.microsoft.qintelipass.dtos.response.ResponseBody;
+import org.microsoft.qintelipass.services.chat.ConversationService;
+import org.microsoft.qintelipass.services.auth.SmsServiceImpl;
+import org.microsoft.qintelipass.services.user.UserDetailsServiceImpl;
 import org.microsoft.qintelipass.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -26,9 +23,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import org.microsoft.qintelipass.services.auth.AuthTokenService;
+import org.microsoft.qintelipass.services.UserService;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -47,7 +47,6 @@ public class AuthController {
     private static final String COOKIE_ROOT = "/";
     @Autowired
     private IRegisterable registerService;
-    private final ConversationService conversationService;
     private final AdminProperties adminProperties;
 
     @Autowired
@@ -57,7 +56,6 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.credentialManager = credentialManager;
-        this.conversationService = conversationService;
         this.adminProperties = adminProperties;
     }
 
@@ -81,17 +79,15 @@ public class AuthController {
                         .maxAge(Duration.ofDays(7))
                         .build();
                 httpResponse.addHeader(HttpHeaders.SET_COOKIE, auth.toString());
-                ConversationResponse conversation = conversationService.createInitialConversation(user.getId());
                 String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
 
                 return ResponseEntity.ok(Map.of(
                         "success", true,
-                        "data", UserDTO.fromUser(user),
-                        "token", token,
+                        "access_token", token,
                         "role", role,
-                        "conversation", conversation,
-                        "initialConversationId", conversation.id()
-                ));
+                        "data", UserDTO.fromUser(user)
+                        )
+                );
             }
             return ResponseEntity.badRequest().body(response);
         } catch (IllegalArgumentException e) {
@@ -193,7 +189,9 @@ public class AuthController {
         }
     }
 }
+
 @Slf4j
+@RestController
 @RequestMapping("api/v2/portal")
 // Portal login entry. Successful login issues accessToken and creates an initial conversation.
 class AuthControllerV2 {

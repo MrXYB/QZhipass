@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.dtos;
 
-import org.microsoft.qintelipass.models.CensorRecord;
+import org.microsoft.qintelipass.entity.CensorRecord;
 
 import java.time.LocalDateTime;
 
@@ -12,17 +12,23 @@ public record CensorRecordDTO(
         String department,
         String modelName,
         String hitKeywords,
+        String inputExcerpt,
+        String outputExcerpt,
+        boolean adminNotified,
         LocalDateTime createdAt
 ) {
     public static CensorRecordDTO from(CensorRecord record) {
         return new CensorRecordDTO(
                 record.getId(),
-                record.getUserId(),
+                record.getUser().getId(),
                 record.getUsername(),
                 record.getPhone(),
                 record.getDepartment(),
                 record.getModelName(),
                 record.getHitKeywords(),
+                record.getInputExcerpt(),
+                record.getOutputExcerpt(),
+                record.isAdminNotified(),
                 record.getCreatedAt()
         );
     }

@@ -1,6 +1,6 @@
 package org.microsoft.qintelipass.services;
 
-import org.microsoft.qintelipass.models.AiModelConfig;
+import org.microsoft.qintelipass.entity.AiModelConfig;
 
 import java.util.Optional;
 

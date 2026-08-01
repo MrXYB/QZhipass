@@ -2,17 +2,19 @@ package org.microsoft.qintelipass.services;
 
 import org.microsoft.qintelipass.dtos.TokenUsageRankDTO;
 import org.microsoft.qintelipass.dtos.UserTokenUsageDTO;
+import org.microsoft.qintelipass.entity.Models;
+import org.microsoft.qintelipass.entity.User;
 
 import java.util.List;
 import java.util.Map;
 
 public interface TokenUsageService {
-    boolean recordTokenUsage(Long userId, Long modelId, int tokensUsed);
-    boolean checkTokenLimit(Long userId);
-    UserTokenUsageDTO getUserTokenUsage(Long userId);
+    boolean recordTokenUsage(User user, Models model, int tokensUsed);
+    boolean checkTokenLimit(User user);
+    UserTokenUsageDTO getUserTokenUsage(User user);
     List<TokenUsageRankDTO> getDailyTokenRank(int topN);
-    long getUserTokenLimit(Long userId);
-    void setUserTokenLimit(Long userId, long limit);
+    long getUserTokenLimit(User user);
+    void setUserTokenLimit(User user, long limit);
     String getTodayTotalTokens();
     void increaseDailyTotalTokens(Integer tokens);
     Long getOveruseUsers();

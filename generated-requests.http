@@ -5,7 +5,7 @@ Content-Type: application/json
 {
   "loginType": "MOBILE_PWD",
   "credential": {
-    "mobile": "13417596627",
+    "mobile": "12341757999",
     "password": "123abc"
   }
 }
@@ -16,12 +16,11 @@ POST http://1.14.203.243/api/v1/auth/portal/register
 Content-Type: application/json
 
 {
-  "email": "13417596627@qq.com",
-  "name": "sssss",
+  "email": "jsdhingy@163.com",
+  "name": "Hello",
   "password": "123abc",
-  "department": "snn",
-  "phone": "13417596627",
-  "wechat" : "dd"
+  "phone": "12341757999",
+  "department": "sndo"
 }
 
 
