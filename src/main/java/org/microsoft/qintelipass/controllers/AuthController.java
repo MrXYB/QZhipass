@@ -101,17 +101,40 @@ public class AuthController {
 
     @PostMapping("/send_code")
     public ResponseEntity<?> sendCode(@RequestBody Map<String, String> payload) {
-        if (payload.get("phone") != null) {
-            String code = smsService.sendSmsCode(payload.get("phone"));
-            log.info("Sent sms code: {}", code);
+        // 兼容大小写参数
+        String phone = payload.getOrDefault("phone", payload.get("Phone"));
+        if (phone == null || phone.isBlank()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "手机号不能为空"));
         }
-        return ResponseEntity
-                .badRequest()
-                .body(ResponseBody
-                        .builder()
-                        .success(false)
-                        .message("phone number should not be null")
-                );
+
+        // 校验手机号格式：必须是11位且以1开头
+        if (!phone.matches("^1\\d{10}$")) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "请输入正确的手机号码"));
+        }
+
+        // 检查60秒冷却时间
+        if (smsService.isInCooldown(phone)) {
+            long remaining = smsService.getCooldownRemaining(phone);
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "message", "请" + remaining + "秒后再获取验证码",
+                            "cooldown", remaining
+                    ));
+        }
+
+        smsService.sendSmsCode(phone);
+        log.info("Sent sms code to phone: {}", phone);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "验证码已发送，5分钟内有效"
+        ));
     }
 
     @DeleteMapping("/logout")
@@ -179,19 +202,60 @@ class AuthControllerV2 {
     private final ConversationService conversationService;
     private final AdminProperties adminProperties;
     private final UserService userService;
+    private final SmsServiceImpl smsService;
 
     public AuthControllerV2(
             LoginStrategyFactory factory,
             AuthTokenService authTokenService,
             ConversationService conversationService,
             AdminProperties adminProperties,
-            UserService userService
+            UserService userService,
+            SmsServiceImpl smsService
     ) {
         this.factory = factory;
         this.authTokenService = authTokenService;
         this.conversationService = conversationService;
         this.adminProperties = adminProperties;
         this.userService = userService;
+        this.smsService = smsService;
+    }
+
+    @PostMapping("/send_code")
+    public ResponseEntity<?> sendCode(@RequestBody Map<String, String> payload) {
+        // 兼容大小写参数
+        String phone = payload.getOrDefault("phone", payload.get("Phone"));
+        if (phone == null || phone.isBlank()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "手机号不能为空"));
+        }
+
+        // 校验手机号格式：必须是11位且以1开头
+        if (!phone.matches("^1\\d{10}$")) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "请输入正确的手机号码"));
+        }
+
+        // 检查60秒冷却时间
+        if (smsService.isInCooldown(phone)) {
+            long remaining = smsService.getCooldownRemaining(phone);
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "message", "请" + remaining + "秒后再获取验证码",
+                            "cooldown", remaining
+                    ));
+        }
+
+        smsService.sendSmsCode(phone);
+        log.info("Sent sms code to phone: {}", phone);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "验证码已发送，5分钟内有效"
+        ));
     }
 
     @PostMapping("/login")

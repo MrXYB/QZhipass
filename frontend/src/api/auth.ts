@@ -96,7 +96,7 @@ async function login(
   fallback: string
 ) {
   try {
-    const { data } = await http.post<PortalLoginResponse>('/v1/portal/login', {
+    const { data } = await http.post<PortalLoginResponse>('/v2/portal/login', {
       loginType,
       credential
     })
@@ -123,8 +123,8 @@ export async function loginByPassword(mobile: string, password: string) {
 
 export async function sendSmsCode(mobile: string) {
   try {
-    const { data } = await http.post<PortalLoginResponse>('/v1/portal/send_code', {
-      Phone: mobile
+    const { data } = await http.post<PortalLoginResponse>('/v2/portal/send_code', {
+      phone: mobile
     })
 
     if (data?.success === false) {
