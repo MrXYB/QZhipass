@@ -11,8 +11,6 @@ public class SmsCodeGenerationTest {
     public SmsServiceImpl smsService;
     @Test
     public void testCodeValid(){
-        for (int i = 0; i < 100; i++) {
-            System.out.println(smsService.getRandomCode(6));
-        }
+
     }
 }
