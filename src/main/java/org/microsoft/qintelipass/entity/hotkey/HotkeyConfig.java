@@ -2,6 +2,7 @@ package org.microsoft.qintelipass.entity.hotkey;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.microsoft.qintelipass.entity.User;
@@ -20,6 +21,7 @@ public class HotkeyConfig {
     private Long userId;
     @Id
     private int index;
+    @Size
     @NotBlank
     @Column(nullable = false)
     private String functionKey;

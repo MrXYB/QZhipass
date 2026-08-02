@@ -1,5 +1,6 @@
 package org.microsoft.qintelipass.controllers;
 
+import jakarta.validation.constraints.Size;
 import org.microsoft.qintelipass.entity.hotkey.HotkeyConfig;
 import org.microsoft.qintelipass.entity.hotkey.HotkeyConfigID;
 import org.microsoft.qintelipass.repository.HotkeyConfigRepository;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 @Validated
+@Size
 @RestController
 @RequestMapping("api/v1/user/config")
 public class UserConfigController {
@@ -37,7 +39,7 @@ public class UserConfigController {
 
     @PostMapping("/hotkey")
     public ResponseEntity<?> setKeyConfig(@RequestParam int keyIndex,
-                                           @RequestParam String keyName){
+                                           @RequestParam @Size(min = 1, max=128) String keyName){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
         HotkeyConfigID id = new HotkeyConfigID(userId, keyIndex);
@@ -64,12 +66,10 @@ public class UserConfigController {
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
         HotkeyConfigID id = new HotkeyConfigID(userId, keyIndex);
-        try {
-            hotkeyRepository.deleteById(id);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(e.getMessage());
+        if (!hotkeyRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
-
+        hotkeyRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }
