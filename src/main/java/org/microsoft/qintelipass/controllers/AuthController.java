@@ -26,14 +26,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import org.microsoft.qintelipass.services.auth.AuthTokenService;
-import org.microsoft.qintelipass.services.UserService;
-import org.springframework.util.StringUtils;
-
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @RestController
@@ -45,6 +41,11 @@ public class AuthController {
     private final UserDetailsServiceImpl userDetailsService;
     private final CredentialManager credentialManager;
     private static final String COOKIE_ROOT = "/";
+    private static final String PASSWORD_LOGIN_TYPE = "password";
+    private static final int MAX_PASSWORD_ATTEMPTS = 5;
+    private static final Duration LOCK_DURATION = Duration.ofMinutes(30);
+    private final Map<String, AttemptInfo> passwordAttemptCache = new ConcurrentHashMap<>();
+
     @Autowired
     private IRegisterable registerService;
     private final AdminProperties adminProperties;
@@ -67,9 +68,29 @@ public class AuthController {
             String loginType = formData.getLoginType();
             Map<String, Object> params = formData.getCredential();
             ILoginStrategy strategy = factory.getStrategy(loginType);
+
+            // 密码登录的失败次数限制
+            boolean isPasswordLogin = PASSWORD_LOGIN_TYPE.equals(loginType);
+            String phone = isPasswordLogin && params != null ? (String) params.get("phone") : null;
+            if (isPasswordLogin && phone != null && isAccountLocked(phone)) {
+                long retryAfter = getRemainingLockMinutes(phone);
+                log.warn("Account locked due to too many failed password attempts: {}", phone);
+                return ResponseEntity
+                        .badRequest()
+                        .body(Map.of(
+                                "success", false,
+                                "message", "密码错误次数过多，账户已被锁定，请" + retryAfter + "分钟后再试",
+                                "locked", true,
+                                "retry_after_minutes", retryAfter
+                        ));
+            }
+
             ResponseBody<User> response = strategy.authenticate(params);
             User user = response.getPayload();
             if (response.isSuccess() && user != null) {
+                if (isPasswordLogin && phone != null) {
+                    clearFailedAttempts(phone);
+                }
                 UserDetails userDetails = userDetailsService.loadUserByUsername(user.getName());
                 String token = jwtUtil.generateToken(userDetails);
                 ResponseCookie auth = ResponseCookie.from("access_token", token)
@@ -82,17 +103,98 @@ public class AuthController {
                 String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
 
                 return ResponseEntity.ok(Map.of(
-                        "success", true,
-                        "access_token", token,
-                        "role", role,
-                        "data", UserDTO.fromUser(user)
+                                "success", true,
+                                "access_token", token,
+                                "role", role,
+                                "data", UserDTO.fromUser(user)
                         )
                 );
+            }
+
+            // 密码登录失败，记录失败次数
+            if (isPasswordLogin && phone != null) {
+                int remaining = recordFailedAttempt(phone);
+                if (remaining == 0) {
+                    return ResponseEntity
+                            .badRequest()
+                            .body(Map.of(
+                                    "success", false,
+                                    "message", "密码错误次数过多，账户已被锁定" + LOCK_DURATION.toMinutes() + "分钟",
+                                    "locked", true,
+                                    "retry_after_minutes", LOCK_DURATION.toMinutes()
+                            ));
+                }
+                return ResponseEntity
+                        .badRequest()
+                        .body(Map.of(
+                                "success", false,
+                                "message", "密码错误，还剩" + remaining + "次尝试机会",
+                                "attempts_remaining", remaining
+                        ));
             }
             return ResponseEntity.badRequest().body(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    /**
+     * 判断账号是否因密码错误次数过多被锁定
+     */
+    private boolean isAccountLocked(String phone) {
+        AttemptInfo info = passwordAttemptCache.get(phone);
+        if (info == null || info.lockedUntil <= 0) {
+            return false;
+        }
+        if (System.currentTimeMillis() >= info.lockedUntil) {
+            // 锁定已过期，清理缓存
+            passwordAttemptCache.remove(phone);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 获取剩余锁定时间（分钟，向上取整）
+     */
+    private long getRemainingLockMinutes(String phone) {
+        AttemptInfo info = passwordAttemptCache.get(phone);
+        if (info == null || info.lockedUntil <= 0) {
+            return 0;
+        }
+        long remainingMillis = info.lockedUntil - System.currentTimeMillis();
+        return Math.max(1, (remainingMillis + 60_000 - 1) / 60_000);
+    }
+
+    /**
+     * 记录一次密码登录失败，返回剩余尝试次数；返回 0 表示已触发锁定
+     */
+    private int recordFailedAttempt(String phone) {
+        AttemptInfo info = passwordAttemptCache.computeIfAbsent(phone, k -> new AttemptInfo());
+        synchronized (info) {
+            info.count++;
+            if (info.count >= MAX_PASSWORD_ATTEMPTS) {
+                info.lockedUntil = System.currentTimeMillis() + LOCK_DURATION.toMillis();
+                log.warn("Password attempt limit reached for phone: {}, locked for {} minutes", phone, LOCK_DURATION.toMinutes());
+                return 0;
+            }
+            return MAX_PASSWORD_ATTEMPTS - info.count;
+        }
+    }
+
+    /**
+     * 登录成功后清除失败记录
+     */
+    private void clearFailedAttempts(String phone) {
+        passwordAttemptCache.remove(phone);
+    }
+
+    /**
+     * 密码登录失败次数追踪信息
+     */
+    private static class AttemptInfo {
+        int count = 0;
+        long lockedUntil = 0; // epoch millis，0 表示未锁定
     }
 
     @PostMapping("/send_code")
@@ -187,168 +289,5 @@ public class AuthController {
                     ));
 
         }
-    }
-}
-
-@Slf4j
-@RestController
-@RequestMapping("api/v2/portal")
-// Portal login entry. Successful login issues accessToken and creates an initial conversation.
-class AuthControllerV2 {
-    private final LoginStrategyFactory factory;
-    private final AuthTokenService authTokenService;
-    private final ConversationService conversationService;
-    private final AdminProperties adminProperties;
-    private final UserService userService;
-    private final SmsServiceImpl smsService;
-
-    public AuthControllerV2(
-            LoginStrategyFactory factory,
-            AuthTokenService authTokenService,
-            ConversationService conversationService,
-            AdminProperties adminProperties,
-            UserService userService,
-            SmsServiceImpl smsService
-    ) {
-        this.factory = factory;
-        this.authTokenService = authTokenService;
-        this.conversationService = conversationService;
-        this.adminProperties = adminProperties;
-        this.userService = userService;
-        this.smsService = smsService;
-    }
-
-    @PostMapping("/send_code")
-    public ResponseEntity<?> sendCode(@RequestBody Map<String, String> payload) {
-        // 兼容大小写参数
-        String phone = payload.getOrDefault("phone", payload.get("Phone"));
-        if (phone == null || phone.isBlank()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(Map.of("success", false, "message", "手机号不能为空"));
-        }
-
-        // 校验手机号格式：必须是11位且以1开头
-        if (!phone.matches("^1\\d{10}$")) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(Map.of("success", false, "message", "请输入正确的手机号码"));
-        }
-
-        // 检查60秒冷却时间
-        if (smsService.isInCooldown(phone)) {
-            long remaining = smsService.getCooldownRemaining(phone);
-            return ResponseEntity
-                    .badRequest()
-                    .body(Map.of(
-                            "success", false,
-                            "message", "请" + remaining + "秒后再获取验证码",
-                            "cooldown", remaining
-                    ));
-        }
-
-        smsService.sendSmsCode(phone);
-        log.info("Sent sms code to phone: {}", phone);
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "验证码已发送，5分钟内有效"
-        ));
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest formData, HttpServletResponse servletResponse) {
-        String loginType = formData.getLoginType();
-        Map<String, Object> params = formData.effectiveParams();
-        ILoginStrategy strategy = factory.getStrategy(loginType);
-        log.info("Login request received. loginType={}", loginType);
-        ResponseBody response = strategy.authenticate(params);
-        log.info("Authenticator completed. success={}", response.isSuccess());
-        if (response.isSuccess()) {
-            Long userId = extractUserId(response, params);
-            String accessToken = authTokenService.issueToken(userId);
-            ConversationResponse conversation = conversationService.createInitialConversation(userId);
-            String role = resolveUserRole(userId);
-            response.setPayload(buildLoginData(userId, accessToken, conversation, role));
-
-            ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
-                    .httpOnly(true)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(Duration.ofHours(8))
-                    .build();
-            servletResponse.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-            return ResponseEntity.ok(response);
-        }
-        return ResponseEntity.badRequest().body(response);
-    }
-
-    // Prefer the numeric id from the MySQL user table. Phone fallback is kept only for local SMS demos.
-    private Long extractUserId(ResponseBody response, Map<String, Object> params) {
-        if (response.getPayload() instanceof Map<?, ?> data) {
-            Long id = readLong(data.get("id"));
-            if (id != null) {
-                return id;
-            }
-            Long userId = readLong(data.get("user_id"));
-            if (userId != null) {
-                return userId;
-            }
-            Long camelUserId = readLong(data.get("userId"));
-            if (camelUserId != null) {
-                return camelUserId;
-            }
-        }
-
-        Long mobile = readLong(params.get("mobile"));
-        if (mobile != null) {
-            return mobile;
-        }
-        Long phoneNumber = readLong(params.get("phone_number"));
-        if (phoneNumber != null) {
-            return phoneNumber;
-        }
-        Long phone = readLong(params.get("phone"));
-        if (phone != null) {
-            return phone;
-        }
-        throw new IllegalArgumentException("Login succeeded but numeric user id could not be resolved.");
-    }
-
-    private Long readLong(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        if (value instanceof String text && StringUtils.hasText(text)) {
-            try {
-                return Long.parseLong(text.trim());
-            } catch (NumberFormatException exception) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private Map<String, Object> buildLoginData(
-            Long userId,
-            String accessToken,
-            ConversationResponse conversation,
-            String role
-    ) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("user_id", userId);
-        data.put("access_token", accessToken);
-        data.put("role", role);
-        data.put("initialConversationId", conversation.id());
-        data.put("conversation", conversation);
-        return data;
-    }
-
-    private String resolveUserRole(Long userId) {
-        User user = userService.getUserById(userId);
-        if (user != null && adminProperties.isAdmin(user.getPhone())) {
-            return "ADMIN";
-        }
-        return "USER";
     }
 }

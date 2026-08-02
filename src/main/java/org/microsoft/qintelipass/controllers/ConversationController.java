@@ -9,11 +9,12 @@ import org.microsoft.qintelipass.dtos.request.UpdateConversationModelRequest;
 import org.microsoft.qintelipass.dtos.request.UpdateConversationTitleRequest;
 import org.microsoft.qintelipass.dtos.response.*;
 import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.security.SecurityUtil;
 import org.microsoft.qintelipass.services.censor.CensorService;
 import org.microsoft.qintelipass.services.chat.ConversationService;
 import org.microsoft.qintelipass.services.chat.ConversationTurnService;
-import org.microsoft.qintelipass.services.user.CurrentUserService;
 import org.microsoft.qintelipass.services.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,13 +26,13 @@ import java.util.List;
 // Controller only resolves the current user and request body; ownership is enforced in the service.
 public class ConversationController {
     private final ConversationService conversationService;
-    private final CurrentUserService currentUserService;
+    private final SecurityUtil currentUserService;
     private final CensorService censorService;
     private final UserService userService;
     private final ConversationTurnService conversationTurnService;
 
     public ConversationController(ConversationService conversationService,
-                                  CurrentUserService currentUserService,
+                                  SecurityUtil currentUserService,
                                   CensorService censorService,
                                   UserService userService,
                                   ConversationTurnService conversationTurnService) {
@@ -48,7 +49,7 @@ public class ConversationController {
             @Valid @RequestBody ConversationTurnRequest request,
             HttpServletRequest httpRequest
     ) {
-        User user = userService.getUserById(currentUserService.requireUserId(httpRequest));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         ConversationTurnResponse response = conversationTurnService.send(user, conversationId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Turn completed.", response));
     }
@@ -58,7 +59,7 @@ public class ConversationController {
             @Valid @RequestBody ConversationTurnRequest request,
             HttpServletRequest httpRequest
     ) {
-        User user = userService.getUserById(currentUserService.requireUserId(httpRequest));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         ConversationTurnResponse response = conversationTurnService.sendNew(user, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Conversation created and turn completed.", response));
     }
@@ -68,7 +69,7 @@ public class ConversationController {
             @RequestBody(required = false) CreateConversationRequest request,
             HttpServletRequest httpRequest
     ) {
-        Long userId = currentUserService.requireUserId(httpRequest);
+        Long userId = currentUserService.getCurrentUserId();
         ConversationResponse response = conversationService.createConversation(userService.getUserById(userId), request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -77,7 +78,7 @@ public class ConversationController {
 
     @PostMapping("/initial")
     public ResponseEntity<ApiResponse<ConversationResponse>> createInitialConversation(HttpServletRequest request) {
-        User user = userService.getUserById(currentUserService.requireUserId(request));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         ConversationResponse response = conversationService.createInitialConversation(user);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -90,7 +91,7 @@ public class ConversationController {
             @RequestParam(required = false) Integer limit,
             HttpServletRequest request
     ) {
-        Long userId = currentUserService.requireUserId(request);
+        Long userId = currentUserService.getCurrentUserId();
         return ApiResponse.ok(conversationService.listRecentConversations(userId, page, limit));
     }
 
@@ -99,7 +100,7 @@ public class ConversationController {
             @PathVariable Long conversationId,
             HttpServletRequest request
     ) {
-        User user = userService.getUserById(currentUserService.requireUserId(request));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         return ApiResponse.ok(conversationService.getConversation(user, conversationId));
     }
 
@@ -109,7 +110,7 @@ public class ConversationController {
             @RequestBody SaveConversationMessageRequest request,
             HttpServletRequest httpRequest
     ) {
-        User user = userService.getUserById(currentUserService.requireUserId(httpRequest));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         ConversationMessageResponse response = conversationService.saveMessage(user, conversationId, request);
 
         // Safe fallback: run sensitive-word check on request content if available
@@ -142,7 +143,7 @@ public class ConversationController {
             @RequestBody UpdateConversationModelRequest request,
             HttpServletRequest httpRequest
     ) {
-        User user = userService.getUserById(currentUserService.requireUserId(httpRequest));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         return ApiResponse.ok(conversationService.updateModel(user, conversationId, request));
     }
 
@@ -152,7 +153,7 @@ public class ConversationController {
             @RequestBody UpdateConversationTitleRequest request,
             HttpServletRequest httpRequest
     ) {
-        User user = userService.getUserById(currentUserService.requireUserId(httpRequest));
+        User user = userService.getUserById(currentUserService.getCurrentUserId());
         return ApiResponse.ok(conversationService.updateTitle(user, conversationId, request));
     }
 }

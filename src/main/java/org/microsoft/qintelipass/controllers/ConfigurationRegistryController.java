@@ -24,9 +24,9 @@ public class ConfigurationRegistryController {
     @GetMapping("/hotkeys")
     private ResponseEntity<?> getHotkeyRegistry(){
         List<Hotkey> keys = hotkeyRepository.findAll();
-        Map<Integer, String> keyMap = new HashMap<>();
+        Map<Number, String> keyMap = new HashMap<>();
         for (Hotkey key : keys) {
-            keyMap.put(key.getIndex(), key.getKey());
+            keyMap.put(key.getKeyId(), key.getKeyName());
         }
 
         return ResponseEntity.ok(Map.of(

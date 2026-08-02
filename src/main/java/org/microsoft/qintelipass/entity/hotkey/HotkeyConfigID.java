@@ -10,5 +10,5 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class HotkeyConfigID implements Serializable {
     private Long userId;
-    private int index;
+    private int keyId;
 }

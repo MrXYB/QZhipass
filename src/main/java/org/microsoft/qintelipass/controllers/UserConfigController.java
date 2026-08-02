@@ -39,7 +39,7 @@ public class UserConfigController {
 
     @PostMapping("/hotkey")
     public ResponseEntity<?> setKeyConfig(@RequestParam int keyIndex,
-                                           @RequestParam @Size(min = 1, max=128) String keyName){
+                                          @RequestParam @Size(min = 1, max=128) String keyName){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
         HotkeyConfigID id = new HotkeyConfigID(userId, keyIndex);
@@ -51,7 +51,7 @@ public class UserConfigController {
         } else {
             config = HotkeyConfig
                     .builder()
-                    .index(keyIndex)
+                    .keyId(keyIndex)
                     .userId(userId)
                     .functionKey(keyName)
                     .build();

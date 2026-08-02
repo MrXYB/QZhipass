@@ -20,9 +20,7 @@ public class HotkeyConfig {
     @Id
     private Long userId;
     @Id
-    private int index;
-    @Size
-    @NotBlank
+    private int keyId;
     @Column(nullable = false)
     private String functionKey;
     @CreationTimestamp

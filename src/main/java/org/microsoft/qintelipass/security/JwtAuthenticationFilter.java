@@ -48,28 +48,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             try {
                 if (!jwtUtil.validateToken(jwt)) {
-                    log.debug("JWT token validation failed (expired or invalid)");
+                    log.warn("JWT token validation failed (expired or invalid)");
+                    throw new SecurityException("JWT token validation failed (expired or invalid)");
                 } else {
-                    Long userId = null;
-                    try {
-                        userId = jwtUtil.extractUserId(jwt);
-                    } catch (Exception e) {
-                        log.debug("Could not extract user ID from token, will try to find by username");
-                    }
-
                     String username = jwtUtil.extractUsername(jwt);
                     User user = null;
 
-                    if (userId != null) {
-                        user = userService.getUserById(userId);
-                    }
-
-                    if (user == null && username != null) {
+                    if (username != null) {
                         user = userService.findByUsername(username);
                     }
 
                     if (user == null) {
-                        log.warn("JWT token valid but user not found: userId={}, username={}", userId, username);
+                        log.warn("JWT token valid but user not found: username= {}", username);
+                        throw new SecurityException("JWT token valid but user not found: username="+ username);
                     } else {
                         UserRole role = adminProperties.isAdmin(user.getPhone())
                                 ? UserRole.ADMIN
@@ -96,7 +87,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
             } catch (Exception e) {
-                log.warn("JWT token processing failed: {}", e.getMessage());
+                log.error("JWT token processing failed", e);
             }
         }
 

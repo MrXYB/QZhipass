@@ -10,9 +10,8 @@ import lombok.Setter;
 @Table(name = "hotkeys")
 public class Hotkey {
     @Id
-    @Column(name = "key_id")
+    @Column(nullable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer index;
-
-    private String key;
+    private int keyId;
+    private String keyName;
 }
