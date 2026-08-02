@@ -1,11 +1,22 @@
 package org.microsoft.qintelipass.controllers;
 
 import org.microsoft.qintelipass.ITrafficStatService;
+import org.microsoft.qintelipass.dtos.UserFreezeLogDTO;
+import org.microsoft.qintelipass.dtos.request.FreezeUserRequest;
 import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.security.SecurityUtil;
+import org.microsoft.qintelipass.services.UserFreezeService;
 import org.microsoft.qintelipass.services.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,46 +28,44 @@ import java.util.stream.Collectors;
 public class UserController {
     private final UserService userService;
     private final ITrafficStatService trafficStatService;
-    @Autowired
-    public UserController(UserService userService, ITrafficStatService trafficStatService) {
+    private final UserFreezeService userFreezeService;
+
+    public UserController(
+            UserService userService,
+            ITrafficStatService trafficStatService,
+            UserFreezeService userFreezeService
+    ) {
         this.userService = userService;
         this.trafficStatService = trafficStatService;
+        this.userFreezeService = userFreezeService;
     }
 
     @GetMapping("/users")
     public ResponseEntity<?> getUsers(
             @RequestParam(value = "q", required = false) String keyword,
             @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size) {
-
+            @RequestParam(value = "size", defaultValue = "20") int size
+    ) {
         List<User> allUsers = userService.getAllUsers();
-
-        // 搜索过滤
         List<User> filteredUsers = allUsers;
         if (keyword != null && !keyword.trim().isEmpty()) {
             String lowerKeyword = keyword.toLowerCase();
             filteredUsers = allUsers.stream()
-                .filter(u -> (u.getName() != null && u.getName().toLowerCase().contains(lowerKeyword))
-                        || (u.getPhone() != null && u.getPhone().contains(keyword)))
-                .collect(Collectors.toList());
+                    .filter(user -> (user.getName() != null && user.getName().toLowerCase().contains(lowerKeyword))
+                            || (user.getPhone() != null && user.getPhone().contains(keyword)))
+                    .collect(Collectors.toList());
         }
 
-        // 分页
         int startIndex = (page - 1) * size;
         int endIndex = Math.min(startIndex + size, filteredUsers.size());
-
         if (startIndex >= filteredUsers.size()) {
             startIndex = 0;
             endIndex = Math.min(size, filteredUsers.size());
         }
 
-        List<User> pageUsers = filteredUsers.subList(startIndex, endIndex);
-
-        // 返回格式：{ total: 100, items: [...] }
         Map<String, Object> response = new HashMap<>();
         response.put("total", filteredUsers.size());
-        response.put("items", pageUsers);
-
+        response.put("items", filteredUsers.subList(startIndex, endIndex));
         return ResponseEntity.ok(response);
     }
 
@@ -65,55 +74,115 @@ public class UserController {
         if (userId == null) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid user ID"));
         }
-        
+
         boolean success = userService.deactivateUser(userId);
         if (success) {
             return ResponseEntity.ok(Map.of("success", true, "message", "User cancelled successfully"));
         }
-        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Failed to cancel user. User may not exist or already be cancelled."));
+        return ResponseEntity.badRequest().body(Map.of(
+                "success",
+                false,
+                "message",
+                "Failed to cancel user. User may not exist or already be cancelled."
+        ));
     }
-    
-    /**
-     * 获取当前用户信息（用于测试注销拦截）
-     * 这个接口会被 UserStatusInterceptor 拦截
-     */
+
+    @PostMapping("/users/{userId}/freeze")
+    public ResponseEntity<?> freezeUser(
+            @PathVariable Long userId,
+            @RequestBody FreezeUserRequest request
+    ) {
+        try {
+            UserFreezeLogDTO log = userFreezeService.freezeUser(
+                    userId,
+                    request == null ? null : request.getReason(),
+                    request == null ? null : request.getCensorAlertId(),
+                    SecurityUtil.getCurrentUserId(),
+                    SecurityUtil.getCurrentUsername()
+            );
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "User frozen successfully",
+                    "data", log
+            ));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/users/{userId}/unfreeze")
+    public ResponseEntity<?> unfreezeUser(
+            @PathVariable Long userId,
+            @RequestBody FreezeUserRequest request
+    ) {
+        try {
+            UserFreezeLogDTO log = userFreezeService.unfreezeUser(
+                    userId,
+                    request == null ? null : request.getReason(),
+                    SecurityUtil.getCurrentUserId(),
+                    SecurityUtil.getCurrentUsername()
+            );
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "User unfrozen successfully",
+                    "data", log
+            ));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/users/{userId}/freeze-logs")
+    public ResponseEntity<?> getFreezeLogs(@PathVariable Long userId) {
+        return ResponseEntity.ok(Map.of(
+                "success",
+                true,
+                "data",
+                userFreezeService.getFreezeLogs(userId)
+        ));
+    }
+
     @GetMapping("/user/profile")
     public ResponseEntity<?> getUserProfile(@RequestHeader(value = "X-User-Id", required = false) String userIdStr) {
         if (userIdStr == null || userIdStr.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Missing X-User-Id header"));
         }
-        
+
         Long userId;
         try {
             userId = Long.parseLong(userIdStr);
         } catch (NumberFormatException e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid user ID format"));
         }
-        
+
         User user = userService.getUserById(userId);
         if (user == null) {
             return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
         }
-        
-        // 返回用户信息（会被 UserStatusInterceptor 拦截如果状态是 CANCELLED）
+
         return ResponseEntity.ok(Map.of(
-            "success", true,
-            "data", Map.of(
-                "id", user.getId(),
-                "name", user.getName(),
-                "phone", user.getPhone(),
-                "status", user.getStatus()
-            )
+                "success", true,
+                "data", Map.of(
+                        "id", user.getId(),
+                        "name", user.getName(),
+                        "phone", user.getPhone(),
+                        "status", user.getStatus()
+                )
         ));
     }
 
     @GetMapping("/users/active/statistics")
-    public ResponseEntity<?> getActiveUsers(){
+    public ResponseEntity<?> getActiveUsers() {
         Map<String, Object> stat = Map.of(
                 "count", trafficStatService.getActiveUsers(),
                 "percent", 0.1
         );
         return ResponseEntity.ok().body(stat);
     }
-
 }
