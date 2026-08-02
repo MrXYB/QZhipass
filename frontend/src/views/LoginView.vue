@@ -113,6 +113,8 @@ async function handleSmsLogin() {
     await authStore.smsLogin(normalizedSmsMobile.value, smsForm.smsCode.trim())
     await redirectAfterLogin()
   } catch (error) {
+    // 验证码错误或过期时清空验证码，保留手机号
+    smsForm.smsCode = ''
     // 先交给注销用户处理器判断，是注销错误则弹窗，否则抛出走原逻辑
     try {
       handleLoginError(error)

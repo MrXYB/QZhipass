@@ -27,4 +27,26 @@ public class RedisService {
     public void deleteValue(String key) {
         redisTemplate.delete(key);
     }
+
+    /**
+     * 检查 key 是否存在
+     */
+    public boolean hasKey(String key) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    /**
+     * 获取 key 的剩余过期时间（秒），若 key 不存在或未设置过期时间返回 0
+     */
+    public long getExpire(String key) {
+        Long expire = redisTemplate.getExpire(key);
+        return expire != null && expire > 0 ? expire : 0;
+    }
+
+    /**
+     * 设置 key 的过期时间
+     */
+    public void setValue(String key, String value, long seconds) {
+        redisTemplate.opsForValue().set(key, value, Duration.ofSeconds(seconds));
+    }
 }
