@@ -110,7 +110,6 @@ public class UserServiceImpl implements UserService {
         }
         if (user.isFrozen()) {
             log.warn("登录失败：账户已冻结 phone={}", phone);
-            throw new IllegalStateException("该账户已被冻结，无法使用");
         }
 
         // 验证密码
@@ -262,6 +261,14 @@ public class UserServiceImpl implements UserService {
         return user != null && UserStatus.CANCELLED.equals(user.getStatus());
     }
 
+    @Override
+    public boolean isUserFrozen(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        User user = getUserById(userId);
+        return user != null && UserStatus.FROZEN.equals(user.getStatus());
+    }
     @Override
     public User findByUsername(String username) {
         if (username == null || username.trim().isEmpty()) {
