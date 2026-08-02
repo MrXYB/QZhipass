@@ -1,8 +1,11 @@
 package org.microsoft.qintelipass.controllers;
 
-import jakarta.validation.constraints.Size;
+import org.microsoft.qintelipass.entity.hotkey.Function;
+import org.microsoft.qintelipass.entity.hotkey.Hotkey;
 import org.microsoft.qintelipass.entity.hotkey.HotkeyConfig;
 import org.microsoft.qintelipass.entity.hotkey.HotkeyConfigID;
+import org.microsoft.qintelipass.exceptions.ApiException;
+import org.microsoft.qintelipass.repository.FunctionKeyRepository;
 import org.microsoft.qintelipass.repository.HotkeyConfigRepository;
 import org.microsoft.qintelipass.repository.HotkeyRepository;
 import org.microsoft.qintelipass.security.SecurityUtil;
@@ -15,21 +18,24 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 
 @Validated
-@Size
 @RestController
 @RequestMapping("api/v1/user/config")
 public class UserConfigController {
-    private final HotkeyConfigRepository hotkeyRepository;
+    private final HotkeyConfigRepository hotkeyConfigRepository;
+    private final FunctionKeyRepository functionKeyRepository;
+    private final HotkeyRepository hotkeyRepository;
     @Autowired
-    public UserConfigController(HotkeyConfigRepository hotkeyRepository) {
-        this.hotkeyRepository = hotkeyRepository;
+    public UserConfigController(HotkeyConfigRepository hotkeyRepository, FunctionKeyRepository functionKeyRepository, HotkeyRepository hotkeyRepository1) {
+        this.hotkeyConfigRepository = hotkeyRepository;
+        this.functionKeyRepository = functionKeyRepository;
+        this.hotkeyRepository = hotkeyRepository1;
     }
     @GetMapping("/hotkey")
-    public ResponseEntity<?> getHotkeys(@RequestParam int keyIndex){
+    public ResponseEntity<?> getHotkeys(@RequestParam int funcId){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
-        HotkeyConfigID id = new HotkeyConfigID(userId, keyIndex);
-        Optional<HotkeyConfig> config = hotkeyRepository.findById(id);
+        HotkeyConfigID id = new HotkeyConfigID(userId, funcId);
+        Optional<HotkeyConfig> config = hotkeyConfigRepository.findById(id);
         if(config.isPresent()){
             return ResponseEntity.ok(config.get());
         } else {
@@ -38,38 +44,45 @@ public class UserConfigController {
     }
 
     @PostMapping("/hotkey")
-    public ResponseEntity<?> setKeyConfig(@RequestParam int keyIndex,
-                                          @RequestParam @Size(min = 1, max=128) String keyName){
+    public ResponseEntity<?> setKeyConfig(@RequestParam int funcId,
+                                          @RequestParam int keyId){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
-        HotkeyConfigID id = new HotkeyConfigID(userId, keyIndex);
-        Optional<HotkeyConfig> existing = hotkeyRepository.findById(id);
+
+        Optional<Hotkey> hotkey = hotkeyRepository.findById(keyId);
+        Optional<Function> function = functionKeyRepository.findById(funcId);
+
+        hotkey.orElseThrow(()-> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Hotkey Id"));
+        function.orElseThrow(()-> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Function Id"));
+
+        HotkeyConfigID id = new HotkeyConfigID(userId, funcId);
+        Optional<HotkeyConfig> existing = hotkeyConfigRepository.findById(id);
         HotkeyConfig config;
         if (existing.isPresent()) {
             config = existing.get();
-            config.setFunctionKey(keyName);
+            config.setKeyId(keyId);
         } else {
             config = HotkeyConfig
                     .builder()
-                    .keyId(keyIndex)
+                    .funcId(funcId)
                     .userId(userId)
-                    .functionKey(keyName)
+                    .keyId(keyId)
                     .build();
         }
-        HotkeyConfig saved = hotkeyRepository.save(config);
+        HotkeyConfig saved = hotkeyConfigRepository.save(config);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @DeleteMapping("/hotkey")
-    public ResponseEntity<?> resetConfig(@RequestParam int keyIndex){
+    public ResponseEntity<?> resetConfig(@RequestParam int funcId){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
-        HotkeyConfigID id = new HotkeyConfigID(userId, keyIndex);
-        if (!hotkeyRepository.existsById(id)) {
+        HotkeyConfigID id = new HotkeyConfigID(userId, funcId);
+        if (!hotkeyConfigRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        hotkeyRepository.deleteById(id);
+        hotkeyConfigRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }

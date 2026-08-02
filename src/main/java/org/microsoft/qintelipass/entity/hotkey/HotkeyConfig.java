@@ -20,9 +20,9 @@ public class HotkeyConfig {
     @Id
     private Long userId;
     @Id
-    private int keyId;
+    private int funcId;
     @Column(nullable = false)
-    private String functionKey;
+    private int keyId;
     @CreationTimestamp
     @Column(nullable = false)
     private LocalDateTime createAt;
