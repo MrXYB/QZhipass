@@ -26,8 +26,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import org.microsoft.qintelipass.services.auth.AuthTokenService;
+import org.microsoft.qintelipass.services.UserService;
+import org.springframework.util.StringUtils;
+
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -92,17 +97,40 @@ public class AuthController {
 
     @PostMapping("/send_code")
     public ResponseEntity<?> sendCode(@RequestBody Map<String, String> payload) {
-        if (payload.get("phone") != null) {
-            String code = smsService.sendSmsCode(payload.get("phone"));
-            log.info("Sent sms code: {}", code);
+        // 兼容大小写参数
+        String phone = payload.getOrDefault("phone", payload.get("Phone"));
+        if (phone == null || phone.isBlank()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "手机号不能为空"));
         }
-        return ResponseEntity
-                .badRequest()
-                .body(ResponseBody
-                        .builder()
-                        .success(false)
-                        .message("phone number should not be null")
-                );
+
+        // 校验手机号格式：必须是11位且以1开头
+        if (!phone.matches("^1\\d{10}$")) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "请输入正确的手机号码"));
+        }
+
+        // 检查60秒冷却时间
+        if (smsService.isInCooldown(phone)) {
+            long remaining = smsService.getCooldownRemaining(phone);
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "message", "请" + remaining + "秒后再获取验证码",
+                            "cooldown", remaining
+                    ));
+        }
+
+        smsService.sendSmsCode(phone);
+        log.info("Sent sms code to phone: {}", phone);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "验证码已发送，5分钟内有效"
+        ));
     }
 
     @DeleteMapping("/logout")
@@ -159,5 +187,168 @@ public class AuthController {
                     ));
 
         }
+    }
+}
+
+@Slf4j
+@RestController
+@RequestMapping("api/v2/portal")
+// Portal login entry. Successful login issues accessToken and creates an initial conversation.
+class AuthControllerV2 {
+    private final LoginStrategyFactory factory;
+    private final AuthTokenService authTokenService;
+    private final ConversationService conversationService;
+    private final AdminProperties adminProperties;
+    private final UserService userService;
+    private final SmsServiceImpl smsService;
+
+    public AuthControllerV2(
+            LoginStrategyFactory factory,
+            AuthTokenService authTokenService,
+            ConversationService conversationService,
+            AdminProperties adminProperties,
+            UserService userService,
+            SmsServiceImpl smsService
+    ) {
+        this.factory = factory;
+        this.authTokenService = authTokenService;
+        this.conversationService = conversationService;
+        this.adminProperties = adminProperties;
+        this.userService = userService;
+        this.smsService = smsService;
+    }
+
+    @PostMapping("/send_code")
+    public ResponseEntity<?> sendCode(@RequestBody Map<String, String> payload) {
+        // 兼容大小写参数
+        String phone = payload.getOrDefault("phone", payload.get("Phone"));
+        if (phone == null || phone.isBlank()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "手机号不能为空"));
+        }
+
+        // 校验手机号格式：必须是11位且以1开头
+        if (!phone.matches("^1\\d{10}$")) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("success", false, "message", "请输入正确的手机号码"));
+        }
+
+        // 检查60秒冷却时间
+        if (smsService.isInCooldown(phone)) {
+            long remaining = smsService.getCooldownRemaining(phone);
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of(
+                            "success", false,
+                            "message", "请" + remaining + "秒后再获取验证码",
+                            "cooldown", remaining
+                    ));
+        }
+
+        smsService.sendSmsCode(phone);
+        log.info("Sent sms code to phone: {}", phone);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "验证码已发送，5分钟内有效"
+        ));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest formData, HttpServletResponse servletResponse) {
+        String loginType = formData.getLoginType();
+        Map<String, Object> params = formData.effectiveParams();
+        ILoginStrategy strategy = factory.getStrategy(loginType);
+        log.info("Login request received. loginType={}", loginType);
+        ResponseBody response = strategy.authenticate(params);
+        log.info("Authenticator completed. success={}", response.isSuccess());
+        if (response.isSuccess()) {
+            Long userId = extractUserId(response, params);
+            String accessToken = authTokenService.issueToken(userId);
+            ConversationResponse conversation = conversationService.createInitialConversation(userId);
+            String role = resolveUserRole(userId);
+            response.setPayload(buildLoginData(userId, accessToken, conversation, role));
+
+            ResponseCookie accessTokenCookie = ResponseCookie.from("access_token", accessToken)
+                    .httpOnly(true)
+                    .sameSite("Lax")
+                    .path("/")
+                    .maxAge(Duration.ofHours(8))
+                    .build();
+            servletResponse.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // Prefer the numeric id from the MySQL user table. Phone fallback is kept only for local SMS demos.
+    private Long extractUserId(ResponseBody response, Map<String, Object> params) {
+        if (response.getPayload() instanceof Map<?, ?> data) {
+            Long id = readLong(data.get("id"));
+            if (id != null) {
+                return id;
+            }
+            Long userId = readLong(data.get("user_id"));
+            if (userId != null) {
+                return userId;
+            }
+            Long camelUserId = readLong(data.get("userId"));
+            if (camelUserId != null) {
+                return camelUserId;
+            }
+        }
+
+        Long mobile = readLong(params.get("mobile"));
+        if (mobile != null) {
+            return mobile;
+        }
+        Long phoneNumber = readLong(params.get("phone_number"));
+        if (phoneNumber != null) {
+            return phoneNumber;
+        }
+        Long phone = readLong(params.get("phone"));
+        if (phone != null) {
+            return phone;
+        }
+        throw new IllegalArgumentException("Login succeeded but numeric user id could not be resolved.");
+    }
+
+    private Long readLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String text && StringUtils.hasText(text)) {
+            try {
+                return Long.parseLong(text.trim());
+            } catch (NumberFormatException exception) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Map<String, Object> buildLoginData(
+            Long userId,
+            String accessToken,
+            ConversationResponse conversation,
+            String role
+    ) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("user_id", userId);
+        data.put("access_token", accessToken);
+        data.put("role", role);
+        data.put("initialConversationId", conversation.id());
+        data.put("conversation", conversation);
+        return data;
+    }
+
+    private String resolveUserRole(Long userId) {
+        User user = userService.getUserById(userId);
+        if (user != null && adminProperties.isAdmin(user.getPhone())) {
+            return "ADMIN";
+        }
+        return "USER";
     }
 }

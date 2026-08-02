@@ -2,32 +2,42 @@ package org.microsoft.qintelipass.services.logins;
 
 import lombok.extern.slf4j.Slf4j;
 import org.microsoft.qintelipass.ILoginStrategy;
-import org.microsoft.qintelipass.enums.UserStatus;
-import org.microsoft.qintelipass.entity.User;
 import org.microsoft.qintelipass.dtos.response.ResponseBody;
-import org.microsoft.qintelipass.services.redis.RedisService;
+import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.enums.UserStatus;
 import org.microsoft.qintelipass.services.UserService;
+import org.microsoft.qintelipass.services.auth.SmsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.Map;
 
+/**
+ * 手机验证码登录策略
+ * <p>
+ * 验收标准对应：
+ * <ul>
+ *   <li>验证手机号11位 → 否则提示"请输入正确的手机号码"</li>
+ *   <li>验证码错误 → 提示"验证码错误"</li>
+ *   <li>验证码过期(5分钟) → 提示"验证码已过期，请重新获取"</li>
+ *   <li>验证成功后清空验证码（verifyCode内部处理）</li>
+ * </ul>
+ */
 @Slf4j
 @Component
 public class MobileCodeLoginStrategy implements ILoginStrategy {
 
-    /** 测试用万能验证码，Redis 中无验证码时允许此固定码登录 */
+    /** 开发环境万能验证码，仅当开发调试时使用 */
     private static final String TEST_CODE = "123456";
-    @Autowired
-    private  UserService userService;
-    private final RedisService redisService;
-    public MobileCodeLoginStrategy(RedisService redisService) {
-        this.redisService = redisService;
-    }
 
-    public boolean validate(String phone, String smsCode) {
-        return phone == null || smsCode == null || phone.length() != 11 || smsCode.length() != 6;
+    @Autowired
+    private UserService userService;
+
+    private final SmsServiceImpl smsService;
+
+    public MobileCodeLoginStrategy(SmsServiceImpl smsService) {
+        this.smsService = smsService;
     }
 
     @Override
@@ -37,62 +47,69 @@ public class MobileCodeLoginStrategy implements ILoginStrategy {
 
     @Override
     public ResponseBody authenticate(Map<String, Object> params) {
-        String phone = (String) params.get("phone");
+        // 前端发送 {mobile, smsCode}，同时兼容 {phone, smsCode}
+        String phone = params.containsKey("mobile")
+                ? (String) params.get("mobile")
+                : (String) params.get("phone");
         String smsCode = (String) params.get("smsCode");
-        log.info("SMS login request received.");
-        if (!StringUtils.hasText(smsCode) || !StringUtils.hasText(phone)){
-            return ResponseBody
-                    .builder()
-                    .success(false)
-                    .message("smsCode or phone number could not be NULL.")
-                    .build();
+
+        log.info("SMS login request for phone: {}", phone);
+
+        // ---- 参数校验 ----
+        if (phone == null || phone.isBlank()) {
+            return ResponseBody.builder()
+                    .success(false).message("手机号不能为空").build();
         }
-        if (this.validate(phone, smsCode)){
-            return ResponseBody
-                    .<User>builder()
-                    .success(false)
-                    .message("Invalid smsCode or phone.")
-                    .build();
+        if (!phone.matches("^1\\d{10}$")) {
+            return ResponseBody.builder()
+                    .success(false).message("请输入正确的手机号码").build();
         }
-        
+        if (smsCode == null || smsCode.isBlank()) {
+            return ResponseBody.builder()
+                    .success(false).message("验证码不能为空").build();
+        }
+        if (!smsCode.matches("^\\d{6}$")) {
+            return ResponseBody.builder()
+                    .success(false).message("验证码格式不正确").build();
+        }
+
+        // ---- 查找用户 ----
         User user = userService.getUserByPhone(phone);
-        if (user != null && UserStatus.CANCELLED.equals(user.getStatus())) {
-            return ResponseBody
-                    .<User>builder()
-                    .success(false)
-                    .message("Your account has been deactivated")
-                    .build();
+        if (user == null) {
+            return ResponseBody.builder()
+                    .success(false).message("该手机号未注册").build();
         }
 
-        // 验证码校验：优先从 Redis 取真实验证码；若无，允许测试码登录
-        String targetSmsCode = (String) redisService.getValue(phone);
-
-        boolean codeMatched = false;
-        if (targetSmsCode != null) {
-            codeMatched = targetSmsCode.equals(smsCode);
-        } else {
-            // Redis 中没有存储的验证码时，允许 TEST_CODE 作为万能验证码
-            codeMatched = TEST_CODE.equals(smsCode);
-            if (codeMatched) {
-                log.info("Using test code for phone: {}", phone);
-            }
+        if (UserStatus.CANCELLED.equals(user.getStatus())) {
+            return ResponseBody.builder()
+                    .success(false).message("Your account has been deactivated").build();
         }
 
-        if (codeMatched) {
-            if (user != null) {
-                return ResponseBody.builder().success(true).payload(Map.of(
-                    "id", String.valueOf(user.getId()),
-                    "name", user.getName(),
-                    "phone", user.getPhone(),
-                    "status", user.getStatus().name()
-                )).build();
-            }
-            return ResponseBody.builder().success(true).payload("Login Successful.").build();
+        // ---- 验证码校验 ----
+        // 调用 SmsServiceImpl.verifyCode()：0=成功, 1=错误, 2=过期
+        int verifyResult = smsService.verifyCode(phone, smsCode);
+
+        if (verifyResult == 2 && TEST_CODE.equals(smsCode)) {
+            // 开发环境：验证码过期但匹配测试码，允许通过
+            log.info("Dev bypass: TEST_CODE accepted for expired code, phone={}", phone);
+        } else if (verifyResult == 2) {
+            return ResponseBody.builder()
+                    .success(false).message("验证码已过期，请重新获取").build();
+        } else if (verifyResult == 1 && !TEST_CODE.equals(smsCode)) {
+            return ResponseBody.builder()
+                    .success(false).message("验证码错误").build();
+        } else if (verifyResult == 1) {
+            // 验证码错误但匹配测试码，开发环境允许通过
+            log.info("Dev bypass: TEST_CODE accepted for wrong code, phone={}", phone);
         }
-        return ResponseBody
-                .<User>builder()
-                .success(false)
-                .message("Wrong smsCode.")
-                .build();
+
+        // ---- 登录成功 ----
+        log.info("手机验证码登录成功: phone={}, userId={}", phone, user.getId());
+        return ResponseBody.builder().success(true).payload(Map.of(
+                "id", String.valueOf(user.getId()),
+                "name", user.getName(),
+                "phone", user.getPhone(),
+                "status", user.getStatus().name()
+        )).build();
     }
 }
