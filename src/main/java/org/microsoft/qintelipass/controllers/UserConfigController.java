@@ -59,34 +59,56 @@ public class UserConfigController {
     }
 
     @PostMapping("/hotkey")
-    public ResponseEntity<?> setKeyConfig(@RequestParam int funcId,
-                                          @RequestParam int keyId){
+    public ResponseEntity<?> createKeyConfig(@RequestParam int funcId,
+                                             @RequestParam int keyId){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
 
         Optional<Hotkey> hotkey = hotkeyRepository.findById(keyId);
         Optional<Function> function = functionKeyRepository.findById(funcId);
 
-        hotkey.orElseThrow(()-> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Hotkey Id"));
-        function.orElseThrow(()-> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Function Id"));
+        hotkey.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Hotkey Id"));
+        function.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Function Id"));
 
         HotkeyConfigID id = new HotkeyConfigID(userId, funcId);
-        Optional<HotkeyConfig> existing = hotkeyConfigRepository.findById(id);
-        HotkeyConfig config;
-        if (existing.isPresent()) {
-            config = existing.get();
-            config.setKeyId(keyId);
-        } else {
-            config = HotkeyConfig
-                    .builder()
-                    .funcId(funcId)
-                    .userId(userId)
-                    .keyId(keyId)
-                    .build();
+        if (hotkeyConfigRepository.existsById(id)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Hotkey config already exists");
         }
+
+        HotkeyConfig config = HotkeyConfig
+                .builder()
+                .funcId(funcId)
+                .userId(userId)
+                .keyId(keyId)
+                .build();
         HotkeyConfig saved = hotkeyConfigRepository.save(config);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    @PutMapping("/hotkey")
+    public ResponseEntity<?> updateKeyConfig(@RequestParam int funcId,
+                                             @RequestParam int keyId){
+        SecurityUtil.requireAuthentication();
+        Long userId = SecurityUtil.getCurrentUserId();
+
+        Optional<Hotkey> hotkey = hotkeyRepository.findById(keyId);
+        Optional<Function> function = functionKeyRepository.findById(funcId);
+
+        hotkey.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Hotkey Id"));
+        function.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid Function Id"));
+
+        HotkeyConfigID id = new HotkeyConfigID(userId, funcId);
+        Optional<HotkeyConfig> existing = hotkeyConfigRepository.findById(id);
+        if (existing.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        HotkeyConfig config = existing.get();
+        config.setKeyId(keyId);
+        HotkeyConfig saved = hotkeyConfigRepository.save(config);
+
+        return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/hotkey")
