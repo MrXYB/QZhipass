@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
+import java.util.*;
 
 @Validated
 @RestController
@@ -31,9 +31,24 @@ public class UserConfigController {
         this.hotkeyRepository = hotkeyRepository1;
     }
     @GetMapping("/hotkey")
-    public ResponseEntity<?> getHotkeys(@RequestParam int funcId){
+    public ResponseEntity<?> getHotkeys(@RequestParam(required = false) Integer funcId){
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
+        if (userId == null){
+            throw new SecurityException("User not found");
+        }
+        if (funcId == null){
+            List<HotkeyConfig> configs = hotkeyConfigRepository.findAllByUserIdIs(userId);
+            List<Map<?, ?>> userConfigs = new ArrayList<>();
+            for (HotkeyConfig config : configs) {
+                userConfigs.add(Map.of(
+                        "keyId", config.getKeyId(),
+                        "funcId", config.getFuncId(),
+                        "createAt", config.getCreateAt()
+                ));
+            }
+            return ResponseEntity.ok().body(userConfigs);
+        }
         HotkeyConfigID id = new HotkeyConfigID(userId, funcId);
         Optional<HotkeyConfig> config = hotkeyConfigRepository.findById(id);
         if(config.isPresent()){
