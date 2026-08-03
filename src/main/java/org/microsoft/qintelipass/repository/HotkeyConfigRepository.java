@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface HotkeyConfigRepository extends JpaRepository<HotkeyConfig, HotkeyConfigID> {
     List<HotkeyConfig> findAllByUserIdIs(Long userId);
+    boolean existsByKeyId(int keyId);
 }

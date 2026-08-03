@@ -64,6 +64,9 @@ public class UserConfigController {
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
 
+        if (hotkeyConfigRepository.existsByKeyId(keyId)){
+            throw new ApiException(HttpStatus.CONFLICT, "Conflict Key Id");
+        }
         Optional<Hotkey> hotkey = hotkeyRepository.findById(keyId);
         Optional<Function> function = functionKeyRepository.findById(funcId);
 
@@ -92,6 +95,9 @@ public class UserConfigController {
         SecurityUtil.requireAuthentication();
         Long userId = SecurityUtil.getCurrentUserId();
 
+        if (hotkeyConfigRepository.existsByKeyId(keyId)){
+            throw new ApiException(HttpStatus.CONFLICT, "Conflict Key Id");
+        }
         Optional<Hotkey> hotkey = hotkeyRepository.findById(keyId);
         Optional<Function> function = functionKeyRepository.findById(funcId);
 
