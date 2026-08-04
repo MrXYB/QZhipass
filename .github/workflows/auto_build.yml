@@ -24,7 +24,7 @@ jobs:
        run: mvn clean package
 
      - name: Upload JAR file
-       uses: actions/upload-artifact@v2
+       uses: actions/upload-artifact@v7.0.1
        with:
           name: Build
           path: target/*.jar
