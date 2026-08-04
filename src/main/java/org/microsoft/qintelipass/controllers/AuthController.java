@@ -29,7 +29,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @RestController
@@ -41,10 +40,6 @@ public class AuthController {
     private final UserDetailsServiceImpl userDetailsService;
     private final CredentialManager credentialManager;
     private static final String COOKIE_ROOT = "/";
-    private static final String PASSWORD_LOGIN_TYPE = "password";
-    private static final int MAX_PASSWORD_ATTEMPTS = 5;
-    private static final Duration LOCK_DURATION = Duration.ofMinutes(30);
-    private final Map<String, AttemptInfo> passwordAttemptCache = new ConcurrentHashMap<>();
 
     @Autowired
     private IRegisterable registerService;
@@ -64,137 +59,33 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest formData, HttpServletResponse httpResponse) {
         log.info("User response: {}", formData);
-        try {
-            String loginType = formData.getLoginType();
-            Map<String, Object> params = formData.getCredential();
-            ILoginStrategy strategy = factory.getStrategy(loginType);
+        String loginType = formData.getLoginType();
+        Map<String, Object> params = formData.effectiveParams();
 
-            // 密码登录的失败次数限制
-            boolean isPasswordLogin = PASSWORD_LOGIN_TYPE.equals(loginType);
-            String phone = isPasswordLogin && params != null ? (String) params.get("phone") : null;
-            if (isPasswordLogin && phone != null && isAccountLocked(phone)) {
-                long retryAfter = getRemainingLockMinutes(phone);
-                log.warn("Account locked due to too many failed password attempts: {}", phone);
-                return ResponseEntity
-                        .badRequest()
-                        .body(Map.of(
-                                "success", false,
-                                "message", "密码错误次数过多，账户已被锁定，请" + retryAfter + "分钟后再试",
-                                "locked", true,
-                                "retry_after_minutes", retryAfter
-                        ));
-            }
+        ILoginStrategy strategy = factory.getStrategy(loginType);
+        ResponseBody<User> response = strategy.authenticate(params);
+        User user = response.getPayload();
+        if (response.isSuccess() && user != null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(user.getName());
+            String token = jwtUtil.generateToken(userDetails);
+            ResponseCookie auth = ResponseCookie.from("access_token", token)
+                    .httpOnly(true)
+                    .sameSite("Lax")
+                    .path(COOKIE_ROOT)
+                    .maxAge(Duration.ofDays(7))
+                    .build();
+            httpResponse.addHeader(HttpHeaders.SET_COOKIE, auth.toString());
+            String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
 
-            ResponseBody<User> response = strategy.authenticate(params);
-            User user = response.getPayload();
-            if (response.isSuccess() && user != null) {
-                if (isPasswordLogin && phone != null) {
-                    clearFailedAttempts(phone);
-                }
-                UserDetails userDetails = userDetailsService.loadUserByUsername(user.getName());
-                String token = jwtUtil.generateToken(userDetails);
-                ResponseCookie auth = ResponseCookie.from("access_token", token)
-                        .httpOnly(true)
-                        .sameSite("Lax")
-                        .path(COOKIE_ROOT)
-                        .maxAge(Duration.ofDays(7))
-                        .build();
-                httpResponse.addHeader(HttpHeaders.SET_COOKIE, auth.toString());
-                String role = adminProperties.isAdmin(user.getPhone()) ? "ADMIN" : "USER";
-
-                return ResponseEntity.ok(Map.of(
-                                "success", true,
-                                "access_token", token,
-                                "role", role,
-                                "data", UserDTO.fromUser(user)
-                        )
-                );
-            }
-
-            // 密码登录失败，记录失败次数
-            if (isPasswordLogin && phone != null) {
-                int remaining = recordFailedAttempt(phone);
-                if (remaining == 0) {
-                    return ResponseEntity
-                            .badRequest()
-                            .body(Map.of(
-                                    "success", false,
-                                    "message", "密码错误次数过多，账户已被锁定" + LOCK_DURATION.toMinutes() + "分钟",
-                                    "locked", true,
-                                    "retry_after_minutes", LOCK_DURATION.toMinutes()
-                            ));
-                }
-                return ResponseEntity
-                        .badRequest()
-                        .body(Map.of(
-                                "success", false,
-                                "message", "密码错误，还剩" + remaining + "次尝试机会",
-                                "attempts_remaining", remaining
-                        ));
-            }
-            return ResponseEntity.badRequest().body(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                            "success", true,
+                            "access_token", token,
+                            "role", role,
+                            "data", UserDTO.fromUser(user)
+                    )
+            );
         }
-    }
-
-    /**
-     * 判断账号是否因密码错误次数过多被锁定
-     */
-    private boolean isAccountLocked(String phone) {
-        AttemptInfo info = passwordAttemptCache.get(phone);
-        if (info == null || info.lockedUntil <= 0) {
-            return false;
-        }
-        if (System.currentTimeMillis() >= info.lockedUntil) {
-            // 锁定已过期，清理缓存
-            passwordAttemptCache.remove(phone);
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * 获取剩余锁定时间（分钟，向上取整）
-     */
-    private long getRemainingLockMinutes(String phone) {
-        AttemptInfo info = passwordAttemptCache.get(phone);
-        if (info == null || info.lockedUntil <= 0) {
-            return 0;
-        }
-        long remainingMillis = info.lockedUntil - System.currentTimeMillis();
-        return Math.max(1, (remainingMillis + 60_000 - 1) / 60_000);
-    }
-
-    /**
-     * 记录一次密码登录失败，返回剩余尝试次数；返回 0 表示已触发锁定
-     */
-    private int recordFailedAttempt(String phone) {
-        AttemptInfo info = passwordAttemptCache.computeIfAbsent(phone, k -> new AttemptInfo());
-        synchronized (info) {
-            info.count++;
-            if (info.count >= MAX_PASSWORD_ATTEMPTS) {
-                info.lockedUntil = System.currentTimeMillis() + LOCK_DURATION.toMillis();
-                log.warn("Password attempt limit reached for phone: {}, locked for {} minutes", phone, LOCK_DURATION.toMinutes());
-                return 0;
-            }
-            return MAX_PASSWORD_ATTEMPTS - info.count;
-        }
-    }
-
-    /**
-     * 登录成功后清除失败记录
-     */
-    private void clearFailedAttempts(String phone) {
-        passwordAttemptCache.remove(phone);
-    }
-
-    /**
-     * 密码登录失败次数追踪信息
-     */
-    private static class AttemptInfo {
-        int count = 0;
-        long lockedUntil = 0; // epoch millis，0 表示未锁定
+        return ResponseEntity.badRequest().body(response);
     }
 
     @PostMapping("/send_code")

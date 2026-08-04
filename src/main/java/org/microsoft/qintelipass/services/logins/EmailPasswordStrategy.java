@@ -1,13 +1,17 @@
 package org.microsoft.qintelipass.services.logins;
 
-import org.microsoft.qintelipass.ILoginStrategy;
-import org.microsoft.qintelipass.dtos.response.ResponseBody;
+import org.microsoft.qintelipass.ILoginable;
+import org.microsoft.qintelipass.entity.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 @Service
-public class EmailPasswordStrategy implements ILoginStrategy {
+public class EmailPasswordStrategy extends BaseLoginStrategy {
+
+    @Autowired
+    private ILoginable loginService;
 
     @Override
     public String getType() {
@@ -15,19 +19,27 @@ public class EmailPasswordStrategy implements ILoginStrategy {
     }
 
     @Override
-    public ResponseBody authenticate(Map<String, Object> params) {
+    protected String extractIdentityKey(Map<String, Object> params) {
+        return (String) params.get("email");
+    }
+
+    @Override
+    protected User doAuthenticate(Map<String, Object> params) {
         String email = (String) params.get("email");
         String password = (String) params.get("password");
 
         if (email == null || email.isBlank()) {
-            return ResponseBody.builder().success(false).message("Email could not be NULL.").build();
+            throw new org.microsoft.qintelipass.exceptions.BadRequestException("邮箱不能为空");
         }
-
         if (password == null || password.isBlank()) {
-            return ResponseBody.builder().success(false).message("Password co" +
-                    "uld not be NULL.").build();
+            throw new org.microsoft.qintelipass.exceptions.BadRequestException("密码不能为空");
         }
 
-        return ResponseBody.builder().success(false).message("Email password login not fully implemented yet.").build();
+        User user = loginService.loginByEmailAndPassword(email, password);
+        if (user == null) {
+            throw new org.microsoft.qintelipass.exceptions.ApiException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "邮箱或密码错误");
+        }
+        return user;
     }
 }

@@ -2,6 +2,7 @@ package org.microsoft.qintelipass.services.auth;
 
 import org.microsoft.qintelipass.ILoginable;
 import org.microsoft.qintelipass.entity.User;
+import org.microsoft.qintelipass.exceptions.UserNotFoundException;
 import org.microsoft.qintelipass.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,7 +29,7 @@ public class LoginService implements ILoginable {
                 return user;
             }
         }
-        return null;
+        throw new UserNotFoundException("This phone is not registered.");
     }
     @Override
     public User loginByEmailAndPassword(String email, String password) {

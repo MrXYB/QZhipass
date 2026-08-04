@@ -6,6 +6,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @RestControllerAdvice
 public class ApiExceptionHandler {
     @ExceptionHandler(ApiException.class)
@@ -13,6 +16,33 @@ public class ApiExceptionHandler {
         return ResponseEntity
                 .status(exception.getStatus())
                 .body(ApiResponse.error(exception.getMessage()));
+    }
+
+    @ExceptionHandler(LoginLockedException.class)
+    public ResponseEntity<Map<String, Object>> handleLoginLockedException(LoginLockedException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", ex.getMessage());
+        body.put("locked", true);
+        body.put("retry_after_minutes", ex.getRetryAfterMinutes());
+        return ResponseEntity.status(ex.getStatus()).body(body);
+    }
+
+    @ExceptionHandler(LoginFailedException.class)
+    public ResponseEntity<Map<String, Object>> handleLoginFailedException(LoginFailedException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("success", false);
+        body.put("message", ex.getMessage());
+        if (ex.getAttemptsRemaining() != null) {
+            body.put("attempts_remaining", ex.getAttemptsRemaining());
+        }
+        if (ex.getLocked() != null) {
+            body.put("locked", ex.getLocked());
+        }
+        if (ex.getRetryAfterMinutes() != null) {
+            body.put("retry_after_minutes", ex.getRetryAfterMinutes());
+        }
+        return ResponseEntity.status(ex.getStatus()).body(body);
     }
 
     @ExceptionHandler(ConflictException.class)
