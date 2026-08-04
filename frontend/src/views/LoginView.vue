@@ -19,6 +19,10 @@ const smsSending = ref(false)
 const countdown = ref(0)
 const smsTimer = ref<number>()
 
+// 字段级即时校验 & 验证码登录的内联错误提示
+const mobileTouched = ref(false) // 手机号框失焦过才提示，避免边输边红
+const smsError = ref<{ text: string; kind: 'wrong' | 'expired' } | null>(null)
+
 const passwordForm = reactive({
   mobile: '',
   password: ''
@@ -40,6 +44,47 @@ const canSubmitSms = computed(
 )
 const smsCodeButtonText = computed(() => (countdown.value > 0 ? `${countdown.value}s` : '获取验证码'))
 
+// 手机号内联提示：失焦过 + 非空 + 不合法 才显示（验收"请输入正确的手机号码"）
+const showMobileError = computed(
+  () =>
+    mobileTouched.value &&
+    smsForm.mobile.trim().length > 0 &&
+    !isValidMobile(normalizedSmsMobile.value)
+)
+
+/**
+ * 验证码【登录】失败 → 验收精确文案 + 图标种类。
+ * 规则：后端若已返回中文，原样尊重并据"过期"二字定图标；
+ *       否则按关键词映射；5xx/网络异常单独提示，避免把"服务器炸了"误说成"验证码错误"；
+ *       兜底"验证码错误"。全程不漏英文。
+ */
+function mapSmsLoginError(error: unknown): { text: string; kind: 'wrong' | 'expired' } {
+  const raw = error instanceof Error ? error.message : String(error ?? '')
+  if (/[一-龥]/.test(raw)) {
+    return raw.includes('过期') ? { text: raw, kind: 'expired' } : { text: raw, kind: 'wrong' }
+  }
+  const msg = raw.toLowerCase()
+  if (msg.includes('过期') || msg.includes('expir')) return { text: '验证码已过期，请重新获取', kind: 'expired' }
+  if (msg.includes('status code 5') || msg.includes('network') || msg.includes('timeout')) {
+    return { text: '登录服务异常，请稍后重试', kind: 'wrong' }
+  }
+  return { text: '验证码错误', kind: 'wrong' }
+}
+
+/**
+ * 【获取验证码】失败 → 中文友好提示。
+ * 后端返回中文则尊重；否则把 axios 英文原文（如 Request failed with status code 500）
+ * 统一吃掉，兜底中文，绝不让英文冒头。注意：翻译文案 ≠ 短信真发出，后者取决于后端。
+ */
+function friendlySendError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '')
+  if (/[一-龥]/.test(raw)) return raw
+  const msg = raw.toLowerCase()
+  if (msg.includes('频繁') || msg.includes('limit') || msg.includes('too many')) return '获取过于频繁，请稍后再试'
+  if (msg.includes('network') || msg.includes('timeout')) return '网络异常，请检查连接后重试'
+  return '验证码发送失败，请稍后重试'
+}
+
 async function redirectAfterLogin() {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/chat'
   await router.push(redirect)
@@ -56,7 +101,6 @@ async function handlePasswordLogin() {
     await authStore.passwordLogin(normalizedPasswordMobile.value, passwordForm.password)
     await redirectAfterLogin()
   } catch (error) {
-    // 先交给注销用户处理器判断，是注销错误则弹窗，否则抛出走原逻辑
     try {
       handleLoginError(error)
     } catch {
@@ -85,41 +129,46 @@ function startCountdown() {
 }
 
 async function handleSendSmsCode() {
-  if (!canSendSms.value) {
-    ElMessage.warning('请输入有效手机号')
+  if (!isValidMobile(normalizedSmsMobile.value)) {
+    mobileTouched.value = true
     return
   }
 
   smsSending.value = true
+  smsError.value = null
   try {
     await sendSmsCode(normalizedSmsMobile.value)
     startCountdown()
     ElMessage.success('验证码已发送')
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '验证码发送失败')
+    // 发码失败：中文友好提示，吃掉 axios 英文原文
+    ElMessage.error(friendlySendError(error))
   } finally {
     smsSending.value = false
   }
 }
 
 async function handleSmsLogin() {
-  if (!canSubmitSms.value) {
-    ElMessage.warning('请输入有效手机号和 6 位验证码')
+  if (!isValidMobile(normalizedSmsMobile.value)) {
+    mobileTouched.value = true
+    return
+  }
+  if (smsForm.smsCode.trim().length !== 6) {
     return
   }
 
   submitting.value = true
+  smsError.value = null
   try {
     await authStore.smsLogin(normalizedSmsMobile.value, smsForm.smsCode.trim())
     await redirectAfterLogin()
   } catch (error) {
-    // 验证码错误或过期时清空验证码，保留手机号
-    smsForm.smsCode = ''
-    // 先交给注销用户处理器判断，是注销错误则弹窗，否则抛出走原逻辑
     try {
       handleLoginError(error)
     } catch {
-      ElMessage.error(error instanceof Error ? error.message : '验证码登录失败')
+      // 验收：精确文案 + 清空验证码 + 绝不动手机号
+      smsError.value = mapSmsLoginError(error)
+      smsForm.smsCode = ''
     }
   } finally {
     submitting.value = false
@@ -212,7 +261,13 @@ onBeforeUnmount(() => {
             maxlength="11"
             placeholder="请输入手机号"
             size="large"
+            @blur="mobileTouched = true"
           />
+          <!-- 问题一：错误提示移到输入框【下方】 -->
+          <span v-if="showMobileError" class="field-error" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12.01" y2="16.5"/></svg>
+            请输入正确的手机号码
+          </span>
 
           <label class="field-label" for="sms-code">验证码</label>
           <div class="sms-row">
@@ -236,6 +291,12 @@ onBeforeUnmount(() => {
               {{ smsCodeButtonText }}
             </el-button>
           </div>
+          <!-- 问题一：错误提示移到验证码行【下方】 -->
+          <span v-if="smsError" class="field-error" role="alert">
+            <svg v-if="smsError?.kind === 'expired'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12.01" y2="16.5"/></svg>
+            {{ smsError?.text }}
+          </span>
 
           <el-button
             class="login-button"
@@ -397,6 +458,41 @@ onBeforeUnmount(() => {
 
 .field-label:not(:first-child) {
   margin-top: 18px;
+}
+
+/* 内联错误胶囊：放在输入框【下方】；align-self 防被 flex 列拉伸成全宽 */
+.field-error {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #fdecec;
+  color: #d92d20;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  animation: field-error-in 0.18s ease-out;
+}
+
+.field-error svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+@keyframes field-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .login-form :deep(.el-input__wrapper) {
